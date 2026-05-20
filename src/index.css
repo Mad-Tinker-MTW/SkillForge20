@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #111111;
+  --color-surface: #1a1a1a;
+  --color-surface-2: #222222;
+  --color-border: #2a2a2a;
+  --color-border-mid: #333333;
+  --color-text: #e8e8e8;
+  --color-text-muted: #888888;
+  --color-text-dim: #555555;
+
+  /* Red as primary accent — MTW brand */
+  --color-accent: #D85A30;
+  --color-accent-bg: rgba(216, 90, 48, 0.12);
+  --color-accent-border: rgba(216, 90, 48, 0.35);
+
+  /* Teal for success/progress states only */
+  --color-success: #1D9E75;
+  --color-success-bg: rgba(29, 158, 117, 0.12);
+
+  /* Phase colors */
+  --color-amber: #EF9F27;
+  --color-amber-bg: rgba(239, 159, 39, 0.12);
+  --color-coral: #D85A30;
+  --color-coral-bg: rgba(216, 90, 48, 0.12);
+  --color-blue: #378ADD;
+  --color-blue-bg: rgba(55, 138, 221, 0.12);
+  --color-purple: #7F77DD;
+  --color-purple-bg: rgba(127, 119, 221, 0.12);
+  --color-teal: #1D9E75;
+  --color-teal-bg: rgba(29, 158, 117, 0.12);
+
+  /* Responsive font base — scales with window via JS */
+  --font-scale: 1;
+  --fs-xs: calc(10px * var(--font-scale));
+  --fs-sm: calc(11px * var(--font-scale));
+  --fs-base: calc(13px * var(--font-scale));
+  --fs-md: calc(14px * var(--font-scale));
+  --fs-lg: calc(16px * var(--font-scale));
+  --fs-xl: calc(20px * var(--font-scale));
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  overflow: hidden;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border-mid); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* Inputs */
+input, textarea, select {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--fs-sm);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.15s;
+  user-select: text;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-accent);
+}
+input::placeholder, textarea::placeholder {
+  color: var(--color-text-dim);
+}
+textarea { resize: none; }
+
+button {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.12s;
+  letter-spacing: 0.02em;
+}
+
+.titlebar-drag { -webkit-app-region: drag; }
+.titlebar-no-drag { -webkit-app-region: no-drag; }
+.scrollable { overflow-y: auto; scrollbar-width: thin; }
+
+.card-enter {
+  animation: cardIn 0.15s ease-out;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Badge colors */
+.badge-high { background: var(--color-coral-bg); color: var(--color-coral); border: 1px solid rgba(216,90,48,0.3); }
+.badge-medium { background: var(--color-amber-bg); color: var(--color-amber); border: 1px solid rgba(239,159,39,0.3); }
+.badge-low { background: var(--color-teal-bg); color: var(--color-teal); border: 1px solid rgba(29,158,117,0.3); }
+.badge-done { background: rgba(136,136,136,0.1); color: #888; border: 1px solid #333; }
+.badge-inprog { background: var(--color-blue-bg); color: var(--color-blue); border: 1px solid rgba(55,138,221,0.3); }
+
+/* Source link */
+.source-link {
+  color: var(--color-blue);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(55,138,221,0.4);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.source-link:hover {
+  border-bottom-color: var(--color-blue);
+}

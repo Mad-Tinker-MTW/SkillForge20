@@ -1,0 +1,34 @@
+phase,title,note,priority
+deconstruct,SKILL: Password Auditing Tools,"Goal: develop enough hands-on understanding of Hashcat, John the Ripper, and Hydra to identify UX and workflow failures across all three, then produce a build document for a unified GUI app that does it better.",high
+deconstruct,hash type identification,"Recognize MD5, SHA-1, SHA-256, bcrypt, NTLM, LM by structure and length. Use hashid and haiti tools to automate.",high
+deconstruct,hashcat attack modes,"Straight (0), combinator (1), brute-force (3), rule-based (0+rules). Know when CPU vs GPU mode wins.",high
+deconstruct,wordlist curation,"rockyou, SecLists, CeWL for target-specific lists. Understand quality vs size tradeoff. Custom list generation.",high
+deconstruct,john the ripper workflow,"john --format flags, incremental mode, --show output parsing. Single crack mode for fast wins.",high
+deconstruct,hydra online attack surface,"SSH, HTTP-POST, FTP, RDP targets. Understand lockout thresholds, rate limiting, and form parameter parsing.",high
+deconstruct,rule-based mutations,"hashcat -r rules, best64.rule, dive.rule. Writing custom rules for target-specific patterns.",medium
+deconstruct,GPU vs CPU tuning,"Workload profiles (-w 1-4), --optimized-kernel-enable, benchmark runs with hashcat -b.",medium
+deconstruct,hash extraction methods,"samdump2 for Windows SAM, /etc/shadow for Linux, Mimikatz NTLM dump concepts.",medium
+deconstruct,rainbow table concepts,"Pre-computed chains, time-memory tradeoff, why salting defeats them. Ophcrack as reference tool.",low
+deconstruct,encoding and format issues,"Hex vs binary hash input, charset flags, UTF-8 vs ASCII wordlists, line ending problems.",low
+selfcorrect,output reading,"Can you distinguish hash format mismatch from exhausted wordlist from wrong mode? Parse status lines correctly.",high
+selfcorrect,attack failure diagnosis,"Wrong mode vs wrong hash type vs list exhausted vs bad encoding. Systematic elimination.",high
+selfcorrect,hashcat example hashes reference,"hashcat.net/wiki/example_hashes - bookmark and use. Cross-reference format codes with real samples.",high
+selfcorrect,speed benchmarking baseline,"Run hashcat -b before sessions. Know your baseline H/s so you can detect configuration problems.",medium
+selfcorrect,john pot file review,"~/.john/john.pot tracks cracked hashes. Review after each run to confirm results are valid.",medium
+selfcorrect,hydra output validation,"Confirm true positives by manually testing returned credentials. False positives happen with HTTP forms.",medium
+selfcorrect,SecLists repository,"github.com/danielmiessler/SecLists - primary wordlist and payload reference. Know the directory structure.",low
+barriers,lab environment isolation,"Need dedicated VM or air-gapped test machine. Never target live systems you do not own.",high
+barriers,wordlist pre-staging,"Download rockyou.txt, SecLists subset before sessions. Avoid mid-session bandwidth dependency.",high
+barriers,GPU driver validation,"Confirm CUDA or OpenCL working on TINKERSWORKSHOP. Run hashcat -b as first session step.",high
+barriers,legal scope definition,"Document that all practice targets are owned or explicitly authorized. CTF platforms count.",high
+barriers,test hash generation,"Create known-answer hashes with python hashlib or openssl for controlled practice targets.",medium
+barriers,hydra test server setup,"Spin up SSH on a local VM or use a dedicated CTF box. Document the target config.",medium
+barriers,distraction blocking,"Schedule focused blocks. Cracking sessions require attention during setup and diagnosis phases.",low
+practice,session 1: hashcat baseline,"Run hashcat -b. Crack 10 MD5 and 10 SHA1 sample hashes with rockyou. Document mode flags and speed.",high
+practice,session 2: rule mutations,"Apply best64.rule and dive.rule to same hash sets. Compare hit rate vs straight dictionary. Document delta.",high
+practice,session 3: john the ripper,"Same hash sets through JtR. Compare speed, UX, output format, and format flag syntax. Note workflow friction.",high
+practice,session 4: format edge cases,"Test bcrypt, NTLM, SHA-512-crypt. Document where each tool struggles and why.",high
+practice,session 5: hydra SSH target,"Stand up test SSH server on local VM. Run hydra against it. Document lockout behavior and tuning flags.",medium
+practice,session 6: hydra HTTP form,"Set up a basic login page. Parse form parameters with hydra. Compare to Burp Suite form analysis.",medium
+practice,session 7: tool comparison matrix,"Build a structured comparison: speed, UX, format support, online vs offline, documentation quality.",medium
+practice,session 8: GUI build document sprint,"Using pain points from sessions 1-7, write the build document for the unified GUI app. Define features, layout, and UX decisions.",high

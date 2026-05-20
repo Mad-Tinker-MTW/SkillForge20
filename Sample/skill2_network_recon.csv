@@ -1,0 +1,32 @@
+phase,title,note,priority
+deconstruct,SKILL: Network Reconnaissance,"Goal: develop enough hands-on understanding of Nmap, Netdiscover, and Wireshark to identify where each tool fails the user, then produce a build document for a unified recon GUI that surfaces the right data without requiring command memorization.",high
+deconstruct,host discovery fundamentals,"nmap -sn ping sweeps, netdiscover ARP scanning. Know when each works and why ARP wins on local segments.",high
+deconstruct,port scanning techniques,"TCP SYN (-sS), connect (-sT), UDP (-sU), and stealth tradeoffs. Timing templates -T1 through -T5.",high
+deconstruct,service and version detection,"nmap -sV and -A flags. Reading banner grabs. Understanding what version info reveals about attack surface.",high
+deconstruct,OS fingerprinting,"nmap -O and TTL analysis. Passive fingerprinting via p0f. Why this matters for exploit selection.",high
+deconstruct,Wireshark packet analysis,"Capture filters vs display filters. Protocol dissection. Following TCP streams. Identifying credentials in cleartext.",high
+deconstruct,NSE scripting engine,"nmap --script categories: auth, vuln, brute, discovery. Running targeted scripts vs full category scans.",medium
+deconstruct,network topology mapping,"Traceroute, TTL analysis, identifying routers and segment boundaries. Drawing the network picture.",medium
+deconstruct,passive reconnaissance,"Shodan, Censys, theHarvester, OSINT before active scanning. Legal and operational considerations.",medium
+deconstruct,scan output formats,"nmap -oN, -oX, -oG output. Parsing grepable output. Feeding results into other tools.",low
+deconstruct,firewall and IDS evasion basics,"Fragmentation, decoy scans, timing adjustments. Understanding detection thresholds.",low
+selfcorrect,scan result validation,"Are open ports actually responding? Confirm with manual nc or telnet connection before acting on results.",high
+selfcorrect,false positive identification,"UDP scans produce many false positives. Verify with -sV. Understand why filtered differs from closed.",high
+selfcorrect,Wireshark filter syntax,"Test display filters on known traffic before using in live capture. Common mistakes: = vs == and port vs tcp.port.",high
+selfcorrect,nmap timing calibration,"Too fast loses accuracy. Too slow misses time-sensitive services. Benchmark -T3 vs -T4 on your lab.",medium
+selfcorrect,reference: nmap book online,"nmap.org/book/toc.html - Gordon Lyon's full reference. Chapter 4 covers port scanning in depth.",medium
+selfcorrect,Wireshark sample captures,"wiki.wireshark.org/SampleCaptures - known-good pcap files for filter practice without live traffic.",low
+barriers,lab network isolation,"Use a dedicated virtual network. Do not scan production or public networks without authorization.",high
+barriers,legal authorization documentation,"Document scope explicitly. CTF platforms and home lab VMs satisfy this. No assumptions.",high
+barriers,Wireshark capture permissions,"Linux requires root or cap_net_raw. Windows needs WinPcap or npcap installed. Verify before sessions.",high
+barriers,test target setup,"Spin up Metasploitable2 or VulnHub VMs as scan targets. Known vulnerability sets make validation easy.",high
+barriers,Wireshark pcap storage,"Large captures fill disk fast. Set file size limits and rotation in capture options before long sessions.",medium
+barriers,nmap on Windows path issues,"Add nmap to PATH. Confirm npcap version compatibility. Test with nmap --version before first session.",medium
+practice,session 1: nmap baseline,"Scan Metasploitable2 with default flags. Then -sV. Then -A. Compare output depth. Document flag effects.",high
+practice,session 2: timing and stealth,"Same target with -T1 through -T4. Record scan duration and port discovery accuracy at each timing level.",high
+practice,session 3: NSE scripts,"Run vuln category against Metasploitable2. Document each finding. Cross-reference with known CVEs.",high
+practice,session 4: Wireshark capture,"Capture a full nmap -A scan in Wireshark. Identify SYN packets, RST responses, banner exchanges.",high
+practice,session 5: passive recon sprint,"Use Shodan and theHarvester on a domain you own. Document what is publicly visible without touching the target.",medium
+practice,session 6: topology mapping,"Trace routes to 5 different targets inside the lab network. Draw the segment map. Identify gateway hops.",medium
+practice,session 7: output parsing,"Export nmap results in all three formats. Write a simple grep pipeline to extract open ports and service versions.",medium
+practice,session 8: GUI build document sprint,"Using pain points from sessions 1-7, write the build document for the unified recon GUI. Define scan workflow, results display, and export UX.",high

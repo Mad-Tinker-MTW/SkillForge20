@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillForge20 — RSA Tracker</title>
+<style>
+  :root {
+    --bg: #111;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2a2a2a;
+    --border-mid: #333;
+    --text: #e8e8e8;
+    --text-muted: #aaa;
+    --text-dim: #666;
+    --accent: #d85a30;
+    --accent-bg: rgba(216,90,48,0.1);
+    --success: #1d9e75;
+    --success-bg: rgba(29,158,117,0.1);
+    --blue: #4a9eff;
+    --blue-bg: rgba(74,158,255,0.1);
+    --amber: #e0a020;
+    --amber-bg: rgba(224,160,32,0.1);
+    --purple: #9b6dff;
+    --purple-bg: rgba(155,109,255,0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+  input, textarea, select { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 3px; font-family: inherit; font-size: 13px; outline: none; padding: 7px 10px; width: 100%; }
+  input:focus, textarea:focus, select:focus { border-color: var(--border-mid); }
+  button { cursor: pointer; font-family: inherit; }
+  h1 { font-size: 18px; font-weight: 500; }
+  h2 { font-size: 15px; font-weight: 500; }
+  .label { font-size: 10px; letter-spacing: 0.08em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 14px; }
+  .btn { border-radius: 3px; font-size: 12px; padding: 7px 14px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); }
+  .btn-accent { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .btn-success { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+  .btn-blue { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+  .btn-purple { background: var(--purple-bg); border-color: var(--purple); color: var(--purple); }
+  .tag { font-size: 9px; padding: 1px 6px; border-radius: 2px; border: 1px solid; letter-spacing: 0.04em; display: inline-block; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .flex { display: flex; }
+  .gap8 { gap: 8px; }
+  .gap12 { gap: 12px; }
+  .col { flex-direction: column; }
+  .w-full { width: 100%; }
+  #app { display: flex; height: 100vh; overflow: hidden; }
+  #sidebar { width: 200px; min-width: 200px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--surface); overflow: hidden; }
+  #main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  #content { flex: 1; overflow-y: auto; padding: 20px; }
+  .nav-btn { width: 100%; text-align: left; padding: 7px 10px; border-radius: 3px; font-size: 12px; background: transparent; border: 1px solid transparent; color: var(--text-dim); }
+  .nav-btn.active { background: var(--surface2); border-color: var(--border-mid); color: var(--text); }
+  .nav-btn:hover:not(.active) { color: var(--text-muted); }
+  .hint { padding: 8px 18px; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); background: var(--surface); border-left: 2px solid var(--border-mid); line-height: 1.6; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface2); border: 1px solid var(--border-mid); color: var(--text); padding: 10px 16px; border-radius: 4px; font-size: 12px; z-index: 100; animation: fadein 0.2s; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .progress-bar { height: 4px; border-radius: 2px; background: var(--border-mid); overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+  .rubric-item { border: 1px solid var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+  .rubric-header { padding: 10px 14px; background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+  .rubric-body { padding: 12px 14px; background: var(--bg); border-top: 1px solid var(--border); }
+  input[type=range] { accent-color: var(--accent); padding: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td, th { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { color: var(--text-dim); font-size: 10px; letter-spacing: 0.06em; font-weight: 400; }
+  .skill-chip { padding: 4px 10px; border-radius: 3px; font-size: 12px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+  .skill-chip.active { border-color: var(--accent); color: var(--accent); }
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 200; display: flex; align-items: center; justify-content: center; }
+  .modal-box { background: var(--surface); border: 1px solid var(--border-mid); border-radius: 4px; padding: 24px; width: 90%; max-width: 440px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div style="padding:14px 12px; border-bottom:1px solid var(--border);">
+      <div class="label" style="margin-bottom:6px">SkillForge20</div>
+      <div id="skill-chips" style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;"></div>
+      <button class="btn btn-accent w-full" style="margin-top:8px;font-size:11px;" onclick="showNewSkillModal()">+ new skill</button>
+    </div>
+    <nav style="flex:1;padding:6px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;" id="nav"></nav>
+    <div style="padding:6px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:2px;">
+      <button class="nav-btn" onclick="exportJSON()">export JSON</button>
+      <button class="nav-btn" onclick="importJSON()">import JSON</button>
+      <button class="nav-btn" onclick="showApiKeyModal(true)">api key</button>
+    </div>
+  </div>
+  <div id="main">
+    <div class="hint" id="hint-bar" style="display:none;"></div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<input type="file" id="json-import-input" accept=".json" style="display:none" onchange="handleImportFile(event)">
+
+<!-- Modal -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="handleOverlayClick(event)">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let db = {}
+let activeSkillId = null
+let activeTab = 'precommit'
+let apiKey = ''
+let toast_timer = null
+let _modalResolve = null
+
+const TABS = [
+  { id: 'precommit', label: '00. pre-commit', hint: 'Write your commitment before you start.' },
+  { id: 'deconstruct', label: '01. deconstruct', hint: 'Break the skill into sub-skills. Focus on the 3-4 that unlock competence fastest.' },
+  { id: 'selfcorrect', label: '02. self-correct', hint: 'Gather just enough reference material to recognize when you are doing it wrong.' },
+  { id: 'barriers', label: '03. barriers', hint: 'Identify everything that will stop you from practicing. Remove each barrier before week 2.' },
+  { id: 'practice', label: '04. practice', hint: 'Each session block answers a specific question. Generic sessions produce generic results.' },
+  { id: 'log', label: 'session log', hint: 'Log every session the same day. Date, hours, what clicked, what broke.' },
+  { id: 'schedule', label: '7-week plan', hint: '20 hours across 7 weeks. Week 7 is buffer and final assessment.' },
+  { id: 'assessment', label: 'competency', hint: 'Flashcard, quiz, or rubric depending on your assessment type.' },
+  { id: 'snapshot', label: 'weekly snapshot', hint: 'At-a-glance status for class. Export Markdown for submission.' },
+]
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function load() {
+  try { db = JSON.parse(localStorage.getItem('first20hrs_db') || '{}') } catch { db = {} }
+  try { apiKey = localStorage.getItem('first20hrs_apikey') || '' } catch {}
+}
+
+function save() {
+  try { localStorage.setItem('first20hrs_db', JSON.stringify(db)) } catch {}
+}
+
+function uid() { return Math.random().toString(36).slice(2, 10) }
+
+function getSkill() { return activeSkillId ? db[activeSkillId] : null }
+
+function updateSkill(s) { if (!s) return; db[s.id] = s; save(); render() }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+load()
+renderNav()
+renderSkillChips()
+setTab('precommit')
+if (!apiKey) showApiKeyModal(true)
+
+function renderNav() {
+  const nav = document.getElementById('nav')
+  nav.innerHTML = TABS.map(t => `
+    <button class="nav-btn ${activeTab === t.id ? 'active' : ''}" onclick="setTab('${t.id}')">${t.label}</button>
+  `).join('')
+}
+
+function renderSkillChips() {
+  const chips = document.getElementById('skill-chips')
+  const skills = Object.values(db)
+  chips.innerHTML = skills.map(s => `
+    <button class="skill-chip ${s.id === activeSkillId ? 'active' : ''}" onclick="selectSkill('${s.id}')">${s.name.slice(0, 24)}</button>
+  `).join('') || '<span style="font-size:11px;color:var(--text-dim)">No skills yet</span>'
+}
+
+function selectSkill(id) { activeSkillId = id; render() }
+
+function setTab(tab) {
+  activeTab = tab
+  render()
+}
+
+function render() {
+  renderNav()
+  renderSkillChips()
+  const hint = document.getElementById('hint-bar')
+  const t = TABS.find(t => t.id === activeTab)
+  if (t?.hint) { hint.style.display = 'block'; hint.textContent = t.hint }
+  else hint.style.display = 'none'
+
+  const content = document.getElementById('content')
+  const skill = getSkill()
+
+  if (activeTab === 'precommit') renderPrecommit(content, skill)
+  else if (['deconstruct','selfcorrect','barriers','practice'].includes(activeTab)) renderPhase(content, skill, activeTab)
+  else if (activeTab === 'log') renderLog(content, skill)
+  else if (activeTab === 'schedule') renderSchedule(content, skill)
+  else if (activeTab === 'assessment') renderAssessment(content, skill)
+  else if (activeTab === 'snapshot') renderSnapshot(content, skill)
+}
+
+// ── Pre-commit ────────────────────────────────────────────────────────────────
+function renderPrecommit(el, skill) {
+  if (!skill) { el.innerHTML = noSkillMsg(); return }
+  const c = skill.commit || {}
+  el.innerHTML = `
+    <div style="max-width:560px">
+      <div class="label" style="margin-bottom:4px">PRE-COMMIT</div>
+      <h2 style="margin-bottom:16px">${skill.name}</h2>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div><div class="label">Skill goal</div>
+          <textarea id="pc-goal" rows="2" style="resize:vertical">${c.goal||''}</textarea></div>
+        <div><div class="label">Definition of done</div>
+          <textarea id="pc-def" rows="2" style="resize:vertical">${c.definition||''}</textarea>
+          <p style="font-size:11px;color:var(--text-dim);margin-top:3px">Be specific. Include a % threshold if applicable.</p></div>
+        <div><div class="label">Target end date</div>
+          <input type="date" id="pc-date" value="${c.endDate||''}"></div>
+        <div><div class="label">Commitment statement</div>
+          <textarea id="pc-stmt" rows="3" style="resize:vertical">${c.statement||''}</textarea></div>
+        <button class="btn btn-accent" onclick="savePrecommit()">save commitment</button>
+      </div>
+      ${skill.commit?.goal ? `
+        <div class="card" style="margin-top:20px">
+          <div class="label" style="margin-bottom:6px">AI GENERATE PLAN</div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Generate a full 20-hour plan with cards and assessment from your commitment above.</p>
+          <button class="btn btn-purple w-full" onclick="generatePlan()" id="gen-btn">${skill.deconstruct?.length ? 'regenerate plan' : 'generate 20-hour plan'}</button>
+          <p id="gen-status" style="font-size:11px;color:var(--text-dim);margin-top:6px;display:none"></p>
+        </div>
+      ` : ''}
+    </div>
+  `
+}
+
+function savePrecommit() {
+  const skill = getSkill(); if (!skill) return
+  skill.commit = {
+    goal: document.getElementById('pc-goal').value,
+    definition: document.getElementById('pc-def').value,
+    endDate: document.getElementById('pc-date').value,
+    statement: document.getElementById('pc-stmt').value,
+  }
+  updateSkill(skill); showToast('commitment saved')
+}
+
+// ── Phase Board ───────────────────────────────────────────────────────────────
+const PHASE_COLORS = { deconstruct:'var(--blue)', selfcorrect:'var(--amber)', barriers:'var(--accent)', practice:'var(--success)' }
+const PHASE_LABELS = { deconstruct:'01. Deconstruct', selfcorrect:'02. Self-Correct', barriers:'03. Barriers', practice:'04. Practice' }
+
+function renderPhase(el, skill, phase) {
+  if (!skill) { el.innerHTML = noSkillMsg(); return }
+  const cards = skill[phase] || []
+  const color = PHASE_COLORS[phase]
+  el.innerHTML = `
+    <div style="max-width:680px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h2 style="color:${color}">${PHASE_LABELS[phase]}</h2>
+        <button class="btn" style="border-color:${color};color:${color}" onclick="addCard('${phase}')">+ add card</button>
+      </div>
+      <div id="cards-${phase}" style="display:flex;flex-direction:column;gap:8px">
+        ${cards.map(c => cardHTML(c, phase)).join('')}
+      </div>
+    </div>
+  `
+}
+
+function cardHTML(c, phase) {
+  const pColor = c.priority === 'high' ? 'var(--accent)' : c.priority === 'medium' ? 'var(--amber)' : 'var(--success)'
+  const statusColor = c.status === 'done' ? 'var(--success)' : c.status === 'inprog' ? 'var(--amber)' : 'var(--text-dim)'
+  const showUrl = phase === 'selfcorrect'
+  return `
+    <div class="card" style="border-left:3px solid ${pColor}">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1">
+          <input value="${esc(c.title)}" onchange="updateCard('${phase}','${c.id}','title',this.value)" style="font-size:13px;font-weight:500;background:transparent;border:none;border-bottom:1px solid transparent;padding:0;margin-bottom:4px;" onfocus="this.style.borderBottomColor='var(--border-mid)'" onblur="this.style.borderBottomColor='transparent'">
+          <textarea rows="2" onchange="updateCard('${phase}','${c.id}','note',this.value)" style="font-size:12px;color:var(--text-muted);resize:vertical;border:none;background:transparent;padding:0;border-bottom:1px solid transparent;" onfocus="this.style.borderBottomColor='var(--border-mid)'" onblur="this.style.borderBottomColor='transparent'">${esc(c.note||'')}</textarea>
+          ${showUrl ? `
+            <input placeholder="source URL (optional)..." value="${esc(c.url||'')}" onchange="updateCard('${phase}','${c.id}','url',this.value)"
+              style="font-size:11px;color:var(--blue);background:transparent;border:none;border-bottom:1px solid transparent;padding:1px 0;margin-top:4px"
+              onfocus="this.style.borderBottomColor='var(--border-mid)'" onblur="this.style.borderBottomColor='transparent'">
+            ${c.url ? `<a href="${esc(c.url)}" target="_blank" style="font-size:11px;color:var(--blue);display:block;margin-top:2px">${esc(c.url.slice(0,50))}</a>` : ''}
+          ` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">
+          <select onchange="updateCard('${phase}','${c.id}','priority',this.value)" style="width:80px;font-size:11px;padding:3px 6px">
+            <option value="high" ${c.priority==='high'?'selected':''}>high</option>
+            <option value="medium" ${c.priority==='medium'?'selected':''}>medium</option>
+            <option value="low" ${c.priority==='low'?'selected':''}>low</option>
+          </select>
+          <select onchange="updateCard('${phase}','${c.id}','status',this.value)" style="width:80px;font-size:11px;padding:3px 6px;color:${statusColor}">
+            <option value="todo" ${c.status==='todo'?'selected':''}>todo</option>
+            <option value="inprog" ${c.status==='inprog'?'selected':''}>in prog</option>
+            <option value="done" ${c.status==='done'?'selected':''}>done</option>
+          </select>
+          <button onclick="deleteCard('${phase}','${c.id}')" style="background:transparent;border:none;color:var(--text-dim);font-size:16px;padding:2px 4px">×</button>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+function addCard(phase) {
+  const skill = getSkill(); if (!skill) return
+  if (!skill[phase]) skill[phase] = []
+  skill[phase].push({ id: uid(), title: 'New card', note: '', priority: 'medium', status: 'todo' })
+  updateSkill(skill)
+}
+
+function updateCard(phase, id, field, val) {
+  const skill = getSkill(); if (!skill) return
+  skill[phase] = skill[phase].map(c => c.id === id ? { ...c, [field]: val } : c)
+  updateSkill(skill)
+}
+
+function deleteCard(phase, id) {
+  const skill = getSkill(); if (!skill) return
+  skill[phase] = skill[phase].filter(c => c.id !== id)
+  updateSkill(skill); showToast('card removed')
+}
+
+// ── Session Log ───────────────────────────────────────────────────────────────
+function renderLog(el, skill) {
+  if (!skill) { el.innerHTML = noSkillMsg(); return }
+  const entries = skill.log || []
+  const totalH = entries.reduce((s, e) => s + (e.hours || 0), 0)
+  el.innerHTML = `
+    <div style="max-width:640px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h2>Session Log</h2>
+        <span style="font-size:12px;color:var(--text-dim)">${totalH.toFixed(1)} / 20 hours</span>
+      </div>
+      <div class="progress-bar" style="margin-bottom:20px">
+        <div class="progress-fill" style="width:${Math.min(100,(totalH/20)*100).toFixed(1)}%;background:${totalH>=20?'var(--success)':'var(--accent)'}"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="label" style="margin-bottom:10px">NEW SESSION</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="grid2">
+            <div><div class="label">Date</div><input type="date" id="log-date" value="${new Date().toISOString().split('T')[0]}"></div>
+            <div><div class="label">Hours</div><input type="number" id="log-hours" min="0.25" step="0.25" value="1.5"></div>
+          </div>
+          <div><div class="label">What I practiced</div><input id="log-focus" placeholder="e.g. Cyrillic alphabet, greetings"></div>
+          <div><div class="label">Session notes</div><textarea id="log-note" rows="2" placeholder="What clicked, what broke..."></textarea></div>
+          <div class="grid2">
+            <div><div class="label">Errors / problems</div><textarea id="log-errors" rows="2" placeholder="One per line"></textarea></div>
+            <div><div class="label">Fixes / adjustments</div><textarea id="log-fixes" rows="2" placeholder="One per line"></textarea></div>
+          </div>
+          <div><div class="label">Evidence (optional)</div><input id="log-evidence" placeholder="e.g. Screenshot, recording file, serial output"></div>
+          <div><div class="label">Next step</div><input id="log-next" placeholder="What to focus on next session"></div>
+          <button class="btn btn-accent" onclick="addLog()">log session</button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${[...entries].reverse().map(e => `
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:12px;font-weight:500">${e.focus || e.note || 'Session'}</span>
+              <span style="font-size:11px;color:var(--text-dim)">${e.date} · ${e.hours}h</span>
+            </div>
+            ${e.note && e.focus ? `<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${esc(e.note)}</p>` : ''}
+            ${e.errors?.length ? `<p style="font-size:11px;color:var(--accent)">Errors: ${e.errors.join(', ')}</p>` : ''}
+            ${e.fixes?.length ? `<p style="font-size:11px;color:var(--success)">Fixes: ${e.fixes.join(', ')}</p>` : ''}
+            ${e.nextStep ? `<p style="font-size:11px;color:var(--text-dim);margin-top:4px">Next: ${esc(e.nextStep)}</p>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `
+}
+
+function addLog() {
+  const skill = getSkill(); if (!skill) return
+  const errors = document.getElementById('log-errors').value.split('\n').map(s => s.trim()).filter(Boolean)
+  const fixes = document.getElementById('log-fixes').value.split('\n').map(s => s.trim()).filter(Boolean)
+  const entry = {
+    id: uid(),
+    date: document.getElementById('log-date').value,
+    hours: parseFloat(document.getElementById('log-hours').value) || 0,
+    focus: document.getElementById('log-focus').value,
+    note: document.getElementById('log-note').value,
+    errors: errors.length ? errors : undefined,
+    fixes: fixes.length ? fixes : undefined,
+    evidence: document.getElementById('log-evidence').value || undefined,
+    nextStep: document.getElementById('log-next').value || undefined,
+  }
+  if (!skill.log) skill.log = []
+  skill.log.push(entry)
+  updateSkill(skill); showToast('session logged')
+}
+
+// ── Schedule ──────────────────────────────────────────────────────────────────
+function renderSchedule(el, skill) {
+  if (!skill) { el.innerHTML = noSkillMsg(); return }
+  const weeks = skill.weeklyFocus || []
+  if (!weeks.length) { el.innerHTML = '<p style="color:var(--text-dim);font-size:13px">Generate a plan first to see the 7-week schedule.</p>'; return }
+  el.innerHTML = `
+    <div style="max-width:680px">
+      <h2 style="margin-bottom:16px">7-Week Plan</h2>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${weeks.map(w => `
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="font-size:10px;padding:1px 8px;border-radius:2px;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim)">WEEK ${w.week}</span>
+              <span style="font-size:13px;font-weight:500">${esc(w.focus)}</span>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">${esc(w.goal)}</p>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:3px">
+              ${(w.tasks||[]).map(t => `<li style="font-size:12px;color:var(--text-dim)">· ${esc(t)}</li>`).join('')}
+            </ul>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `
+}
+
+// ── Assessment ────────────────────────────────────────────────────────────────
+function renderAssessment(el, skill) {
+  if (!skill) { el.innerHTML = noSkillMsg(); return }
+  const rubric = skill.performanceRubric
+  const test = skill.generatedTest
+  const assessmentType = skill.assessmentType || 'knowledge_test'
+  const isKnowledge = assessmentType === 'knowledge_test'
+  const dod = skill.commit?.definition || ''
+
+  const rubricScore = rubric ? rubric.items.reduce((s,i) => s + i.score, 0) : 0
+  const rubricMax = rubric ? rubric.items.reduce((s,i) => s + i.maxPoints, 0) : 100
+  const rubricPct = rubricMax > 0 ? Math.round((rubricScore/rubricMax)*100) : 0
+  const threshold = rubric?.passThreshold || test?.passThreshold || 80
+  const passed = rubricPct >= threshold
+
+  const typeLabels = { knowledge_test:'Knowledge Test', performance_skill:'Performance Skill', build_project:'Build Project', concept_understanding:'Concept Understanding', measurable_output:'Measurable Output', hybrid:'Hybrid' }
+
+  el.innerHTML = `
+    <div style="max-width:600px">
+      <div class="label" style="margin-bottom:4px">COMPETENCY ASSESSMENT</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <h2>${skill.name}</h2>
+        <span class="tag" style="border-color:var(--border);color:var(--text-dim)">${typeLabels[assessmentType]||assessmentType}</span>
+      </div>
+
+      ${rubric ? `
+        <div class="card" style="margin-bottom:20px;border-color:${passed?'var(--success)':'var(--border)'}">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div class="label" style="margin-bottom:2px">Rubric score</div>
+              <p style="font-size:22px;font-weight:500;color:${passed?'var(--success)':'var(--text)'}">${rubricScore}/${rubricMax} <span style="font-size:14px;font-weight:400">(${rubricPct}%)</span></p>
+            </div>
+            <div style="text-align:right">
+              <div class="label">Target</div>
+              <p style="font-size:14px;color:var(--text-dim)">${threshold}%</p>
+            </div>
+          </div>
+          <div class="progress-bar" style="margin-top:8px">
+            <div class="progress-fill" style="width:${rubricPct}%;background:${passed?'var(--success)':'var(--accent)'}"></div>
+          </div>
+        </div>
+        <div id="rubric-items">
+          ${rubric.items.map(item => rubricItemHTML(item)).join('')}
+        </div>
+        <button class="btn btn-success w-full" style="margin-top:12px" onclick="saveRubricScores()">save rubric scores</button>
+      ` : ''}
+
+      ${!rubric && !test ? `
+        <div class="card">
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">No assessment generated yet.</p>
+          <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Assessment type detected: <strong style="color:var(--accent)">${typeLabels[assessmentType]}</strong></p>
+          <select id="assess-type-sel" style="margin-bottom:10px" onchange="updateAssessType(this.value)">
+            ${Object.entries(typeLabels).map(([v,l]) => `<option value="${v}" ${assessmentType===v?'selected':''}>${l}</option>`).join('')}
+          </select>
+          <button class="btn btn-purple w-full" onclick="generateAssessment()" id="gen-assess-btn">generate ${isKnowledge?'knowledge test':'performance rubric'}</button>
+          <p id="assess-status" style="font-size:11px;color:var(--text-dim);margin-top:6px;display:none"></p>
+        </div>
+      ` : ''}
+
+      ${rubric?.measurementToolSuggestion ? `
+        <div class="card" style="margin-top:12px;border-color:var(--blue)">
+          <div class="label" style="color:var(--blue);margin-bottom:4px">MEASUREMENT TOOL</div>
+          <p style="font-size:12px;color:var(--text-muted)">${esc(rubric.measurementToolSuggestion)}</p>
+        </div>
+      ` : ''}
+
+      ${skill.deconstruct?.length && !rubric && !test ? '' : `
+        <div class="card" style="margin-top:16px">
+          <div class="label" style="margin-bottom:6px">REGENERATE</div>
+          <select id="assess-type-sel" style="margin-bottom:8px" onchange="updateAssessType(this.value)">
+            ${Object.entries(typeLabels).map(([v,l]) => `<option value="${v}" ${assessmentType===v?'selected':''}>${l}</option>`).join('')}
+          </select>
+          <button class="btn btn-purple w-full" onclick="generateAssessment()" id="gen-assess-btn">${rubric?'regenerate rubric':test?'regenerate test':'generate assessment'}</button>
+          <p id="assess-status" style="font-size:11px;color:var(--text-dim);margin-top:6px;display:none"></p>
+        </div>
+      `}
+    </div>
+  `
+}
+
+function rubricItemHTML(item) {
+  const pct = Math.round((item.score/item.maxPoints)*100)
+  return `
+    <div class="rubric-item">
+      <div class="rubric-header" onclick="toggleRubricItem('${item.id}')">
+        <div>
+          <p style="font-size:13px;color:var(--text)">${esc(item.title)}</p>
+          ${item.evidenceRequired ? `<p style="font-size:11px;color:var(--text-dim);margin-top:2px">evidence: ${esc(item.evidenceRequired)}</p>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:12px;color:var(--text-muted);min-width:80px;text-align:right">${item.score}/${item.maxPoints} (${pct}%)</span>
+          <span id="chevron-${item.id}" style="font-size:10px;color:var(--text-dim)">▼</span>
+        </div>
+      </div>
+      <div id="rubric-body-${item.id}" class="rubric-body" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="font-size:12px;color:var(--text-dim);min-width:40px">score</span>
+          <input type="range" min="0" max="${item.maxPoints}" value="${item.score}" id="range-${item.id}" oninput="updateRubricScore('${item.id}',this.value)" style="flex:1">
+          <div style="display:flex;align-items:center;gap:4px">
+            <button onclick="adjustScore('${item.id}',-1)" class="btn" style="width:22px;height:22px;padding:0;font-size:14px;line-height:1">-</button>
+            <span id="score-display-${item.id}" style="font-size:13px;min-width:28px;text-align:center">${item.score}</span>
+            <button onclick="adjustScore('${item.id}',1)" class="btn" style="width:22px;height:22px;padding:0;font-size:14px;line-height:1">+</button>
+          </div>
+        </div>
+        <textarea placeholder="Evidence notes (optional)..." id="evidence-${item.id}" rows="2" style="resize:vertical">${esc(item.evidence||'')}</textarea>
+      </div>
+    </div>
+  `
+}
+
+function toggleRubricItem(id) {
+  const body = document.getElementById(`rubric-body-${id}`)
+  const chev = document.getElementById(`chevron-${id}`)
+  if (!body) return
+  const open = body.style.display !== 'none'
+  body.style.display = open ? 'none' : 'block'
+  if (chev) chev.textContent = open ? '▼' : '▲'
+}
+
+function updateRubricScore(id, val) {
+  const d = document.getElementById(`score-display-${id}`)
+  if (d) d.textContent = val
+}
+
+function adjustScore(id, delta) {
+  const range = document.getElementById(`range-${id}`)
+  if (!range) return
+  const newVal = Math.max(0, Math.min(parseInt(range.max), parseInt(range.value) + delta))
+  range.value = newVal
+  updateRubricScore(id, newVal)
+}
+
+function saveRubricScores() {
+  const skill = getSkill(); if (!skill || !skill.performanceRubric) return
+  skill.performanceRubric.items = skill.performanceRubric.items.map(item => ({
+    ...item,
+    score: parseInt(document.getElementById(`range-${item.id}`)?.value || item.score),
+    evidence: document.getElementById(`evidence-${item.id}`)?.value || item.evidence,
+  }))
+  updateSkill(skill); showToast('rubric scores saved')
+}
+
+function updateAssessType(val) {
+  const skill = getSkill(); if (!skill) return
+  skill.assessmentType = val; updateSkill(skill)
+}
+
+// ── Snapshot ──────────────────────────────────────────────────────────────────
+function renderSnapshot(el, skill) {
+  if (!skill) { el.innerHTML = noSkillMsg(); return }
+  const snaps = skill.snapshots || []
+  const totalH = (skill.log||[]).reduce((s,e) => s + (e.hours||0), 0)
+  const rubric = skill.performanceRubric
+  const rubricScore = rubric ? rubric.items.reduce((s,i)=>s+i.score,0) : 0
+  const rubricMax = rubric ? rubric.items.reduce((s,i)=>s+i.maxPoints,0) : 100
+  const dodScore = rubric ? Math.round((rubricScore/rubricMax)*100) : (skill.testAttempts?.length ? Math.max(...skill.testAttempts.map(a=>a.pct)) : 0)
+  const dodTarget = skill.generatedTest?.passThreshold || skill.performanceRubric?.passThreshold || 80
+  const week = (skill.currentWeek || snaps.length + 1)
+
+  el.innerHTML = `
+    <div style="max-width:560px">
+      <div class="label" style="margin-bottom:4px">WEEKLY SNAPSHOT</div>
+      <h2 style="margin-bottom:16px">${skill.name}</h2>
+
+      <div class="grid3" style="margin-bottom:20px">
+        <div class="card"><div class="label">RSA Hours</div><p style="font-size:16px;font-weight:500">${totalH.toFixed(1)} / 20</p></div>
+        <div class="card" style="border-color:${dodScore>=dodTarget?'var(--success)':'var(--border)'}"><div class="label">Score</div><p style="font-size:16px;font-weight:500;color:${dodScore>=dodTarget?'var(--success)':'var(--text)'}">${dodScore}%/${dodTarget}%</p></div>
+        <div class="card"><div class="label">Week</div><p style="font-size:16px;font-weight:500">Week ${week}</p></div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="label" style="margin-bottom:12px">THIS WEEK</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="grid3">
+            <div><div class="label">Week #</div><input type="number" id="snap-week" min="1" max="7" value="${week}"></div>
+            <div><div class="label">Date</div><input type="date" id="snap-date" value="${new Date().toISOString().split('T')[0]}"></div>
+            <div><div class="label">Status</div>
+              <select id="snap-status">
+                <option value="not_started">Not Started</option>
+                <option value="in_progress" selected>In Progress</option>
+                <option value="complete">Complete</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div><div class="label">This week focus</div><input id="snap-focus" placeholder="e.g. Cyrillic alphabet" value="${esc(skill.currentFocus||'')}"></div>
+            <div><div class="label">Next week focus</div><input id="snap-next-focus" placeholder="e.g. Basic greetings" value="${esc(skill.nextFocus||'')}"></div>
+          </div>
+          <div class="grid2">
+            <div><div class="label">Hours this week</div><input type="number" id="snap-hours" min="0" step="0.5" value="0"></div>
+            <div><div class="label">Planned hours</div><input type="number" id="snap-planned" min="0" step="0.5" value="3"></div>
+          </div>
+          <div><div class="label">Blocker (optional)</div><input id="snap-blocker" placeholder="e.g. Need microphone for pronunciation"></div>
+          <div><div class="label">Done this week (one per line)</div><textarea id="snap-done" rows="3" placeholder="What you completed..."></textarea></div>
+          <div><div class="label">Next week plan (one per line)</div><textarea id="snap-plan" rows="3" placeholder="What you will do next week..."></textarea></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-accent flex-1" onclick="saveSnapshot()">save snapshot</button>
+            <button class="btn btn-blue" id="snap-export-btn" style="display:none" onclick="exportSnapshotMD()">export .md</button>
+          </div>
+          <div id="snap-saved" style="display:none;padding:10px;border-radius:3px;background:var(--success-bg);border:1px solid var(--success);font-size:12px;color:var(--success)"></div>
+        </div>
+      </div>
+
+      ${snaps.length ? `
+        <div class="label" style="margin-bottom:8px">PAST SNAPSHOTS</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${[...snaps].reverse().map((s,i) => `
+            <div class="card" style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <p style="font-size:13px">Week ${s.week} · ${s.date}</p>
+                <p style="font-size:11px;color:var(--text-dim)">${esc(s.thisWeekFocus||'(no focus)')}</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:11px;color:var(--text-dim)">${s.thisWeekHours}h · ${s.dodScore}%</span>
+                <button class="btn" style="font-size:10px;padding:3px 8px" onclick="exportSnapshotMDByIndex(${[...snaps].length-1-i})">.md</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `
+}
+
+let lastSnapshot = null
+
+function saveSnapshot() {
+  const skill = getSkill(); if (!skill) return
+  const totalH = (skill.log||[]).reduce((s,e) => s + (e.hours||0), 0)
+  const rubric = skill.performanceRubric
+  const rubricScore = rubric ? rubric.items.reduce((s,i)=>s+i.score,0) : 0
+  const rubricMax = rubric ? rubric.items.reduce((s,i)=>s+i.maxPoints,0) : 100
+  const dodScore = rubric ? Math.round((rubricScore/rubricMax)*100) : 0
+  const dodTarget = skill.generatedTest?.passThreshold || rubric?.passThreshold || 80
+
+  const done = document.getElementById('snap-done').value.split('\n').map(s=>s.trim()).filter(Boolean)
+  const plan = document.getElementById('snap-plan').value.split('\n').map(s=>s.trim()).filter(Boolean)
+  const week = parseInt(document.getElementById('snap-week').value) || 1
+
+  lastSnapshot = {
+    week,
+    date: document.getElementById('snap-date').value,
+    status: document.getElementById('snap-status').value,
+    thisWeekFocus: document.getElementById('snap-focus').value,
+    thisWeekDone: done,
+    thisWeekHours: parseFloat(document.getElementById('snap-hours').value) || 0,
+    thisWeekPlannedHours: parseFloat(document.getElementById('snap-planned').value) || 0,
+    blocker: document.getElementById('snap-blocker').value || undefined,
+    nextWeekFocus: document.getElementById('snap-next-focus').value,
+    nextWeekPlan: plan,
+    rsaHoursTotal: totalH,
+    rsaHoursGoal: 20,
+    dodScore,
+    dodTarget,
+  }
+
+  if (!skill.snapshots) skill.snapshots = []
+  const idx = skill.snapshots.findIndex(s => s.week === week)
+  if (idx >= 0) skill.snapshots[idx] = lastSnapshot
+  else skill.snapshots.push(lastSnapshot)
+  skill.currentWeek = week
+  skill.currentFocus = lastSnapshot.thisWeekFocus
+  skill.nextFocus = lastSnapshot.nextWeekFocus
+
+  updateSkill(skill)
+  const saved = document.getElementById('snap-saved')
+  const exportBtn = document.getElementById('snap-export-btn')
+  if (saved) { saved.style.display='block'; saved.textContent=`✓ Week ${week} snapshot saved` }
+  if (exportBtn) exportBtn.style.display='block'
+  showToast(`Week ${week} snapshot saved`)
+}
+
+function exportSnapshotMD(snap) {
+  const s = snap || lastSnapshot; if (!s) { showToast('save a snapshot first'); return }
+  const skill = getSkill()
+  const done = s.thisWeekDone.map(d=>`- [x] ${d}`).join('\n') || '- (none logged)'
+  const plan = s.nextWeekPlan.map(p=>`- [ ] ${p}`).join('\n') || '- (not set)'
+  const statusLabel = s.status==='complete'?'Complete':s.status==='in_progress'?'In Progress':'Not Started'
+  const md = `# RSA Weekly Snapshot
+
+**Project:** ${skill?.name||''}
+**Week:** Week ${s.week}
+**Date:** ${s.date}
+**Status:** ${statusLabel}
+
+| This Week | Next Week |
+|---|---|
+| **Focus:** ${s.thisWeekFocus||'(not set)'} | **Focus:** ${s.nextWeekFocus||'(not set)'} |
+| **Hours:** ${s.thisWeekHours} / ${s.thisWeekPlannedHours} planned | **Planned Hours:** ${s.thisWeekPlannedHours} |
+${s.blocker ? `| **Blocker:** ${s.blocker} | | ` : ''}
+
+## Completed This Week
+
+${done}
+
+## Next Week Plan
+
+${plan}
+
+## At-a-Glance Progress
+
+| Item | Status |
+|---|---|
+| RSA Hours | ${s.rsaHoursTotal.toFixed(1)} / ${s.rsaHoursGoal} |
+| Assessment Score | ${s.dodScore}% / ${s.dodTarget}% target |
+| Overall Status | ${statusLabel} |
+
+*Full details, session logs, and evidence are in the main RSA project file.*
+`
+  const blob = new Blob([md], {type:'text/markdown'})
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href=url; a.download=`${(skill?.name||'skill').replace(/\s+/g,'_')}_Week${s.week}_Snapshot.md`; a.click()
+  URL.revokeObjectURL(url)
+}
+
+function exportSnapshotMDByIndex(idx) {
+  const skill = getSkill(); if (!skill) return
+  exportSnapshotMD(skill.snapshots[idx])
+}
+
+// ── AI Generation ─────────────────────────────────────────────────────────────
+async function callClaude(messages, maxTokens=8000) {
+  if (!apiKey) {
+    const key = await showApiKeyModal(true)
+    if (!key) return null
+  }
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: maxTokens, messages })
+  })
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API error') }
+  const data = await res.json()
+  return data.content[0].text
+}
+
+async function generatePlan() {
+  const skill = getSkill(); if (!skill) return
+  const btn = document.getElementById('gen-btn'); const status = document.getElementById('gen-status')
+  if (btn) btn.disabled = true
+  if (status) { status.style.display='block'; status.textContent='Claude is deconstructing your skill...' }
+
+  const dod = skill.commit?.definition || ''
+  const goal = skill.commit?.goal || skill.name
+
+  const prompt = `You are an expert skill acquisition coach applying Josh Kaufman's First 20 Hours framework.
+
+A user wants to learn: "${skill.name}"
+End goal: ${goal}
+Definition of done: ${dod}
+Available time: 3 hours per week
+Experience level: beginner
+
+IMPORTANT: Generate a plan that fits inside 20 focused hours for a normal beginner. Move anything requiring advanced polish into a Future Upgrades section if needed.
+
+Return ONLY valid JSON, no markdown fences.
+
+{
+  "skillName": "string",
+  "commit": { "goal": "string", "definition": "string", "statement": "string" },
+  "deconstruct": [{ "title": "string", "note": "string", "priority": "high|medium|low" }],
+  "selfcorrect": [{ "title": "string", "note": "string", "priority": "high|medium|low", "url": "string|null" }],
+  "barriers": [{ "title": "string", "note": "string", "priority": "high|medium|low" }],
+  "practice": [{ "title": "string", "note": "string", "priority": "high|medium|low" }],
+  "weeklyFocus": [{ "week": 1, "focus": "string", "goal": "string", "tasks": ["string"] }],
+  "assessmentType": "knowledge_test|performance_skill|build_project|concept_understanding|measurable_output|hybrid"
+}
+
+Rules: deconstruct 8-12 cards, selfcorrect 5-8 cards, barriers 4-7 cards, practice 8 sessions, weeklyFocus exactly 7 weeks, week 7 is buffer and final assessment.`
+
+  try {
+    const text = await callClaude([{ role:'user', content:prompt }])
+    if (!text) { if (status) { status.style.display='block'; status.textContent='Cancelled.' }; if (btn) btn.disabled=false; return }
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim())
+    skill.deconstruct = (parsed.deconstruct||[]).map(c => ({...c, id:uid(), status:'todo'}))
+    skill.selfcorrect = (parsed.selfcorrect||[]).map(c => ({...c, id:uid(), status:'todo'}))
+    skill.barriers = (parsed.barriers||[]).map(c => ({...c, id:uid(), status:'todo'}))
+    skill.practice = (parsed.practice||[]).map(c => ({...c, id:uid(), status:'todo'}))
+    skill.weeklyFocus = parsed.weeklyFocus || []
+    skill.assessmentType = parsed.assessmentType || 'knowledge_test'
+    if (parsed.commit) { skill.commit = { ...skill.commit, ...parsed.commit } }
+    updateSkill(skill); showToast('Plan generated')
+    if (status) status.style.display='none'
+  } catch(e) {
+    if (status) { status.style.display='block'; status.textContent = 'Error: ' + e.message }
+  }
+  if (btn) btn.disabled = false
+}
+
+async function generateAssessment() {
+  const skill = getSkill(); if (!skill) return
+  const btn = document.getElementById('gen-assess-btn'); const status = document.getElementById('assess-status')
+  if (btn) btn.disabled = true
+  if (status) { status.style.display='block'; status.textContent='Generating assessment...' }
+
+  const assessmentType = skill.assessmentType || 'knowledge_test'
+  const isKnowledge = assessmentType === 'knowledge_test'
+  const dod = skill.commit?.definition || ''
+  const subSkills = (skill.deconstruct||[]).map(c=>c.title).filter(Boolean)
+  const threshold = (dod.match(/(\d+)%/) || [,80])[1]
+
+  try {
+    if (isKnowledge) {
+      const prompt = `Create a 100-question knowledge competency test for: "${skill.name}"
+DOD: ${dod}
+Pass threshold: ${threshold}%
+Sub-skills: ${subSkills.join(', ')}
+
+Return ONLY valid JSON: { "title":"string","instructions":"string","passThreshold":${threshold},"sections":[{"title":"string","questions":[{"id":number,"type":"multiple_choice|true_false|short_answer|situational","question":"string","options":["string"]|null,"answer":"string","explanation":"string"}]}] }
+
+Exactly 100 questions. 40% recall, 35% application, 25% situational. MC has 4 options.`
+      const text = await callClaude([{role:'user',content:prompt}], 16000)
+      if (!text) { if (status) status.textContent='Cancelled.'; if (btn) btn.disabled=false; return }
+      const parsed = JSON.parse(text.replace(/```json|```/g,'').trim())
+      skill.generatedTest = {...parsed, generatedAt:new Date().toISOString(), assessmentType}
+    } else {
+      const typeGuide = {
+        performance_skill:'Must physically perform. Score accuracy, consistency, quality, demonstration.',
+        build_project:'Must build and demonstrate working. Score setup, functionality, troubleshooting, explanation.',
+        concept_understanding:'Must explain and apply. Score explanation quality and accuracy.',
+        measurable_output:'Must produce and measure output against benchmark.',
+        hybrid:'Both perform/build AND understand.',
+      }
+      const prompt = `Create a 100-point performance rubric for: "${skill.name}"
+Type: ${assessmentType} — ${typeGuide[assessmentType]||''}
+DOD: ${dod}
+Pass threshold: ${threshold}%
+Sub-skills: ${subSkills.join(', ')}
+Max 20 hours of realistic practice.
+
+Return ONLY valid JSON: { "title":"string","instructions":"string","passThreshold":${threshold},"assessmentType":"${assessmentType}","measurementToolSuggestion":"string|null","items":[{"id":"short_id","title":"string","maxPoints":number,"score":0,"evidenceRequired":"string","notes":""}] }
+
+Total points must equal exactly 100. 6-10 items max. Order foundational to advanced.`
+      const text = await callClaude([{role:'user',content:prompt}], 4000)
+      if (!text) { if (status) status.textContent='Cancelled.'; if (btn) btn.disabled=false; return }
+      const parsed = JSON.parse(text.replace(/```json|```/g,'').trim())
+      skill.performanceRubric = {...parsed, generatedAt:new Date().toISOString()}
+    }
+    updateSkill(skill); showToast('Assessment generated')
+    if (status) status.style.display='none'
+  } catch(e) {
+    if (status) { status.style.display='block'; status.textContent='Error: ' + e.message }
+  }
+  if (btn) btn.disabled = false
+}
+
+// ── Skill management ──────────────────────────────────────────────────────────
+function showNewSkillModal() {
+  showModal(`
+    <div class="label" style="margin-bottom:6px">NEW SKILL</div>
+    <h2 style="margin-bottom:12px">What do you want to learn?</h2>
+    <input type="text" id="mk-skill" placeholder="e.g. Learn Russian, Play guitar, Build REST APIs..."
+      onkeydown="if(event.key==='Enter')modalCreateSkill();if(event.key==='Escape')closeModal()">
+    <div id="mk-skill-error" style="display:none;font-size:11px;color:var(--accent);margin-top:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-accent" style="flex:1" onclick="modalCreateSkill()">create</button>
+      <button class="btn" onclick="closeModal()">cancel</button>
+    </div>
+  `)
+  setTimeout(() => document.getElementById('mk-skill')?.focus(), 50)
+}
+
+function modalCreateSkill() {
+  const name = document.getElementById('mk-skill')?.value?.trim()
+  if (!name) {
+    const err = document.getElementById('mk-skill-error')
+    if (err) { err.style.display='block'; err.textContent='Enter a skill name.' }
+    return
+  }
+  const id = uid()
+  db[id] = { id, name, created:new Date().toISOString(), commit:{goal:'',endDate:'',definition:'',statement:''}, weekTasks:{}, deconstruct:[], selfcorrect:[], barriers:[], practice:[], log:[], assessmentType:'knowledge_test' }
+  save(); activeSkillId = id; closeModal(); render()
+}
+
+// ── Import / Export ───────────────────────────────────────────────────────────
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], {type:'application/json'})
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href=url; a.download='first20hrs_backup.json'; a.click(); URL.revokeObjectURL(url)
+}
+
+function importJSON() { document.getElementById('json-import-input').click() }
+
+function handleImportFile(e) {
+  const file = e.target.files?.[0]; if (!file) return
+  const r = new FileReader()
+  r.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result)
+      Object.assign(db, data); save(); render(); showToast('imported')
+    } catch { showToast('import failed: invalid JSON') }
+  }
+  r.readAsText(file)
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function showModal(html) {
+  const overlay = document.getElementById('modal-overlay')
+  const box = document.getElementById('modal-box')
+  box.innerHTML = html
+  overlay.style.display = 'flex'
+}
+
+function closeModal(value) {
+  document.getElementById('modal-overlay').style.display = 'none'
+  document.getElementById('modal-box').innerHTML = ''
+  if (_modalResolve) {
+    const r = _modalResolve
+    _modalResolve = null
+    r(value !== undefined ? value : null)
+  }
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal(null)
+}
+
+function showApiKeyModal(allowSkip) {
+  return new Promise(resolve => {
+    _modalResolve = resolve
+    const masked = apiKey ? `${apiKey.slice(0,10)}...${apiKey.slice(-4)}` : ''
+    showModal(`
+      <div class="label" style="color:var(--accent);margin-bottom:6px">API KEY</div>
+      <h2 style="margin-bottom:10px">Anthropic API key</h2>
+      <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:${masked?'8':'16'}px">
+        Required for AI plan generation. Stored in browser localStorage.<br>
+        Keys start with <span style="color:var(--text)">sk-ant-</span> and are about 100 chars.
+      </p>
+      ${masked ? `<p style="font-size:11px;color:var(--text-dim);margin-bottom:12px">Current: <span style="color:var(--text-muted);font-family:monospace">${masked}</span></p>` : ''}
+      <div style="position:relative;margin-bottom:12px">
+        <input type="password" id="mk-key" placeholder="sk-ant-api03-..."
+          style="padding-right:44px"
+          onkeydown="if(event.key==='Enter')modalSaveKey();if(event.key==='Escape')closeModal(null)">
+        <button onclick="modalToggleKeyVis()"
+          style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;padding:2px 6px">show</button>
+      </div>
+      <div id="mk-error" style="display:none;font-size:11px;color:var(--accent);margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-accent" style="flex:1" onclick="modalSaveKey()">save key</button>
+        ${allowSkip ? `<button class="btn" onclick="closeModal(null)">skip</button>` : ''}
+      </div>
+    `)
+    setTimeout(() => document.getElementById('mk-key')?.focus(), 50)
+  })
+}
+
+function modalToggleKeyVis() {
+  const inp = document.getElementById('mk-key')
+  if (!inp) return
+  inp.type = inp.type === 'password' ? 'text' : 'password'
+  const btn = inp.parentElement.querySelector('button')
+  if (btn) btn.textContent = inp.type === 'password' ? 'show' : 'hide'
+}
+
+function modalSaveKey() {
+  const val = document.getElementById('mk-key')?.value?.trim()
+  const err = document.getElementById('mk-error')
+  if (!val) {
+    if (err) { err.style.display='block'; err.textContent='Enter your API key.' }
+    return
+  }
+  apiKey = val
+  localStorage.setItem('first20hrs_apikey', apiKey)
+  closeModal(apiKey)
+  showToast('API key saved')
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function noSkillMsg() {
+  return `<div style="display:flex;align-items:center;justify-content:center;height:200px">
+    <div style="text-align:center">
+      <p style="color:var(--text-dim);font-size:13px;margin-bottom:12px">No skill selected.</p>
+      <button class="btn btn-accent" onclick="showNewSkillModal()">+ create skill</button>
+    </div>
+  </div>`
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+function showToast(msg) {
+  if (toast_timer) clearTimeout(toast_timer)
+  let t = document.querySelector('.toast'); if (t) t.remove()
+  t = document.createElement('div'); t.className='toast'; t.textContent=msg
+  document.body.appendChild(t)
+  toast_timer = setTimeout(() => t.remove(), 2800)
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('modal-overlay').style.display !== 'none') closeModal(null)
+})
+</script>
+</body>
+</html>

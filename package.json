@@ -1,0 +1,62 @@
+{
+  "name": "skillforge20",
+  "version": "1.3.0",
+  "description": "SkillForge20 — Rapid skill acquisition tracker with AI-powered card generation. Mad Tinker's Workshop.",
+  "main": "dist-electron/main.js",
+  "author": "Mad Tinker's Workshop",
+  "license": "MIT",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "dist": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder build --win",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "electron-store": "^8.1.0",
+    "papaparse": "^5.4.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@types/electron": "^1.4.38",
+    "@types/node": "^20.0.0",
+    "@types/papaparse": "^5.3.14",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3",
+    "electron": "^41.6.1",
+    "electron-builder": "^26.8.1",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0",
+    "vite": "^8.0.13",
+    "vite-plugin-electron": "^0.28.0",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.madtinkersworkshop.skillforge20",
+    "productName": "SkillForge20",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "SkillForge20-Setup-${version}.exe"
+    }
+  }
+}

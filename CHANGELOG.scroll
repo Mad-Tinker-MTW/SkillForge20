@@ -1,0 +1,53 @@
+# CHANGELOG — first-20-hours
+
+---
+
+## 2026-05-20
+
+**Problem:** `claude:generateSkill` was returning a JSON parse error ("Expected ',' or '}' after property value in JSON at position 3769") when generating a plan. Response was being truncated before the JSON closed.
+**Fix:** Increased `max_tokens` from 6000 to 8000 on the `claude:generateSkill` IPC handler in `electron/main.ts`. Split the JSON parse into its own try/catch that logs the raw response, length, and stop_reason to the console when parse fails, and surfaces a useful error message to the renderer.
+**Reason:** 6000 tokens was not enough for complex skills with full schema (8 arrays, 7 weekly focus blocks, 10 competency questions). Stop reason was `max_tokens`, not `end_turn`.
+**Result:** Plan generation no longer truncates. Parse failures now include actionable debug output in the Electron main process console.
+
+**Problem:** `detectAssessmentType` and `generateRubric` calls in `AIGeneratorPanel.tsx` used `(window.api.claude as any)` casts because `detectAssessmentType` was missing from the `WindowAPI` type in `src/types/index.ts`.
+**Fix:** Added `detectAssessmentType` to `WindowAPI.claude` in `types/index.ts`. Removed both `as any` casts in `AIGeneratorPanel.tsx`.
+**Reason:** `preload.ts` already exposed `detectAssessmentType`; the type was just never updated. `generateRubric` was already typed so its cast was dead code.
+**Result:** Full type safety across the IPC bridge. No more `as any` in the Claude API calls.
+
+**Problem:** HANDOFF.md, STATUS.md, ROADMAP.md, and CHANGELOG.scroll were absent from the project, violating the MTW session protocol in CLAUDE.md.
+**Fix:** Created all four files with accurate current-state content.
+**Reason:** Required by CLAUDE.md global context rules.
+**Result:** Session handoff docs are now present and accurate.
+
+---
+
+## 2026-05-20 (session 2)
+
+**Problem:** `web/index.html` used three browser `prompt()` calls for API key entry (init, callClaude re-auth) and new skill creation. Blocks the browser thread, ignores tab focus, broken UX.
+**Fix:** Replaced all three with a Promise-based modal system using the file's existing CSS variables. Modal overlays at z-index 200. ESC and clicking outside both close/cancel. API key modal shows/hides the key, displays current masked key when one exists. Init no longer blocks render.
+**Reason:** `prompt()` is deprecated UX that clashes with the dark theme and cannot be styled.
+**Result:** No more browser dialogs. Modal reused for both init and mid-session key prompts via Promise resolution.
+
+**Problem:** `callClaude()` default `max_tokens` was 6000. Same truncation risk as the Electron bug fixed in session 1.
+**Fix:** Changed default to 8000.
+**Reason:** Plan generation calls `callClaude` without an explicit token count. Matches the Electron fix.
+**Result:** Consistent token budget across both platforms.
+
+**Problem:** URL edit input was missing from selfcorrect cards in the web phase board. Cards showed URL as a link if stored but there was no way to add or edit it.
+**Fix:** Added URL input field scoped to `selfcorrect` phase in `cardHTML`, matching Electron behavior.
+**Reason:** selfcorrect cards hold resource links. Without an edit field the feature was half-broken.
+**Result:** URL input shows only on selfcorrect cards.
+
+**Problem:** API key was not accessible after initial setup without opening devtools.
+**Fix:** Added "api key" button to sidebar bottom actions panel, calling `showApiKeyModal(true)`.
+**Reason:** Key management must be reachable without a page reload.
+**Result:** Key change available at any time from sidebar.
+
+---
+
+## 2026-05-20 (session 3)
+
+**Problem:** `SessionLogPanel.tsx` only captured date, hours, and note. The `SessionEntry` type has had `focus`, `errors`, `fixes`, `evidence`, and `nextStep` since v1.3. The form was a regression — the type existed, the web version had the fields, the Electron form did not.
+**Fix:** Added all five missing fields to the form (focus input, notes textarea, errors/fixes grid of textareas, evidence input, next step input). Updated `submit()` to parse errors/fixes/evidence as newline-split string arrays matching the `string[]` type. Updated entry display to render all fields: focus as the entry title, note below it, errors in accent, fixes in success, evidence in blue, next step in dim.
+**Reason:** Type regression. `Omit<SessionEntry, 'id'>` was being satisfied with only 3 of 8 fields.
+**Result:** Electron session log now matches web version field-for-field. Existing entries without the new fields render correctly since all are optional.
