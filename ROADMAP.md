@@ -25,11 +25,15 @@
 - [x] Markdown export
 
 ## Phase 4 — Polish and Stability (in progress)
-- [ ] End-to-end test of plan generation with complex skills at 8000 tokens
-- [ ] Build and installer test on clean machine
-- [ ] Session log enhanced fields (focus, errors, fixes, evidence, nextStep) — types present, UI not wired
+- [x] End-to-end test of plan generation with complex skills at 8000 tokens
+- [x] Build and installer test — SkillForge20-Setup-1.3.0.exe built successfully
+- [x] Session log enhanced fields (focus, errors, fixes, evidence, nextStep) — wired in Electron
+- [x] Multi-user support with per-user skill files and API keys
+- [x] JSON import user handling (Electron + web)
+- [x] Web onboarding wizard restored
 - [ ] Rubric score entry from session log
 - [ ] Progress analysis AI integration in session log
+- [ ] Clean-machine install verification
 
 ## Backlog
 - [ ] Multi-skill comparison view

@@ -15,7 +15,10 @@ type Tab = 'precommit' | 'deconstruct' | 'selfcorrect' | 'barriers' | 'practice'
 
 interface MainAppProps {
   initialSkillId: string | null
+  currentUser: string
   onResetToWizard: () => void
+  onSwitchUser: () => void
+  onImportAsNewUser: (importedDB: SkillDB, username: string) => Promise<boolean>
 }
 
 const TABS: { id: Tab; label: string; color: string }[] = [
@@ -53,7 +56,7 @@ const MIN_SIDEBAR = 140
 const MAX_SIDEBAR = 280
 const DEFAULT_SIDEBAR = 180
 
-export default function MainApp({ initialSkillId, onResetToWizard }: MainAppProps) {
+export default function MainApp({ initialSkillId, currentUser, onResetToWizard, onSwitchUser, onImportAsNewUser }: MainAppProps) {
   const [db, setDb] = useState<SkillDB>({})
   const [activeSkillId, setActiveSkillId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('precommit')
@@ -64,6 +67,13 @@ export default function MainApp({ initialSkillId, onResetToWizard }: MainAppProp
   const [importPreview, setImportPreview] = useState<string | null>(null)
   const [pendingImport, setPendingImport] = useState<ReturnType<typeof parseCSV> | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR)
+
+  // JSON import state
+  const [pendingJSONImport, setPendingJSONImport] = useState<SkillDB | null>(null)
+  const [jsonImportMode, setJsonImportMode] = useState<'choice' | 'newprofile'>('choice')
+  const [jsonNewProfileName, setJsonNewProfileName] = useState('')
+  const [jsonImportError, setJsonImportError] = useState('')
+
   const dragging = useRef(false)
   const dragStart = useRef(0)
   const widthAtDrag = useRef(DEFAULT_SIDEBAR)
@@ -79,7 +89,6 @@ export default function MainApp({ initialSkillId, onResetToWizard }: MainAppProp
     })
   }, [refresh, initialSkillId])
 
-  // Sidebar drag resize
   function onDragStart(e: React.MouseEvent) {
     dragging.current = true
     dragStart.current = e.clientX
@@ -146,7 +155,7 @@ export default function MainApp({ initialSkillId, onResetToWizard }: MainAppProp
     if (!skill) return
     const updated = { ...skill, testAttempts: [...(skill.testAttempts || []), attempt] }
     updateSkill(updated)
-    showToast(`${attempt.mode === 'quiz' ? 'Quiz' : 'Test'} complete — ${attempt.pct}%${attempt.passed ? ' ✓ passed' : ''}`)
+    showToast(`${attempt.mode === 'quiz' ? 'Quiz' : 'Test'} complete — ${attempt.pct}%${attempt.passed ? ' passed' : ''}`)
   }
 
   function handleSaveRubric(rubric: PerformanceRubric) {
@@ -196,6 +205,26 @@ export default function MainApp({ initialSkillId, onResetToWizard }: MainAppProp
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (file.name.endsWith('.json')) {
+      const reader = new FileReader()
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target?.result as string) as SkillDB
+          setPendingJSONImport(data)
+          setJsonImportMode('choice')
+          setJsonNewProfileName('')
+          setJsonImportError('')
+          setShowImport(true)
+        } catch {
+          showToast('invalid JSON file')
+        }
+      }
+      reader.readAsText(file)
+      e.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = ev => {
       const content = ev.target?.result as string
@@ -218,24 +247,67 @@ export default function MainApp({ initialSkillId, onResetToWizard }: MainAppProp
     showToast(`${pendingImport.length} cards imported`)
   }
 
+  function closeImportModal() {
+    setShowImport(false)
+    setImportPreview(null)
+    setPendingImport(null)
+    setPendingJSONImport(null)
+    setJsonImportMode('choice')
+    setJsonNewProfileName('')
+    setJsonImportError('')
+  }
+
+  function handleJSONAppend() {
+    if (!pendingJSONImport) return
+    Object.entries(pendingJSONImport).forEach(([id, s]) => setSkill(id, s as Skill))
+    forceSave()
+    refresh()
+    const count = Object.keys(pendingJSONImport).length
+    closeImportModal()
+    showToast(`${count} skill${count !== 1 ? 's' : ''} merged into current profile`)
+  }
+
+  async function handleJSONCreateProfile() {
+    if (!jsonNewProfileName.trim() || !pendingJSONImport) return
+    setJsonImportError('')
+    const ok = await onImportAsNewUser(pendingJSONImport, jsonNewProfileName.trim())
+    if (!ok) {
+      setJsonImportError('Username already exists. Choose a different name.')
+    } else {
+      closeImportModal()
+    }
+  }
+
   async function handleExportJSON() {
     const data = JSON.stringify(getDB(), null, 2)
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'first20hrs_backup.json'; a.click()
+    a.href = url; a.download = 'skillforge20_backup.json'; a.click()
     URL.revokeObjectURL(url)
     showToast('exported')
   }
 
   const pct = skill ? Math.min(100, Math.round((totalHours(skill) / 20) * 100)) : 0
 
-
   return (
     <div style={{ display: 'flex', height: '100%', background: 'var(--color-bg)' }}>
 
       {/* Sidebar */}
       <div style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0, position: 'relative' }}>
+
+        {/* User display */}
+        <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontSize: '9px', letterSpacing: '0.08em', color: 'var(--color-text-dim)', marginBottom: '1px' }}>USER</p>
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-text-muted)' }}>{currentUser || 'default'}</p>
+          </div>
+          <button
+            style={{ fontSize: '10px', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', padding: '2px 7px', borderRadius: '2px', cursor: 'pointer' }}
+            onClick={onSwitchUser}>
+            switch
+          </button>
+        </div>
 
         {/* Skill selector */}
         <div style={{ padding: '10px', borderBottom: '1px solid var(--color-border)' }}>
@@ -340,12 +412,7 @@ export default function MainApp({ initialSkillId, onResetToWizard }: MainAppProp
         {/* Drag handle */}
         <div
           onMouseDown={onDragStart}
-          style={{
-            position: 'absolute', right: 0, top: 0, bottom: 0, width: '4px',
-            cursor: 'col-resize', zIndex: 10,
-            background: 'transparent',
-            transition: 'background 0.15s',
-          }}
+          style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '4px', cursor: 'col-resize', zIndex: 10, background: 'transparent', transition: 'background 0.15s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-accent)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
         />
@@ -395,35 +462,101 @@ export default function MainApp({ initialSkillId, onResetToWizard }: MainAppProp
       {/* Import modal */}
       {showImport && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
-          onClick={() => setShowImport(false)}>
+          onClick={closeImportModal}>
           <div style={{ width: '90%', maxWidth: '480px', padding: '20px', borderRadius: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}
             onClick={e => e.stopPropagation()}>
-            <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 500 }}>Import CSV or Markdown</p>
-            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', border: '1px dashed var(--color-border-mid)', borderRadius: '3px', cursor: 'pointer' }}>
-              <input type="file" accept=".csv,.md,.txt" className="hidden" onChange={handleImportFile} />
-              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-text-muted)' }}>
-                {importPreview ? 'file loaded' : 'click to browse'}
-              </span>
-            </label>
-            {importPreview && (
-              <pre style={{ fontSize: '10px', padding: '10px', borderRadius: '3px', background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', maxHeight: '120px', overflowY: 'auto' }}>
-                {importPreview}
-              </pre>
+
+            {pendingJSONImport ? (
+              // JSON import handling
+              jsonImportMode === 'choice' ? (
+                <>
+                  <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 500 }}>Import JSON backup</p>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-text-muted)' }}>
+                    {Object.keys(pendingJSONImport).length} skill{Object.keys(pendingJSONImport).length !== 1 ? 's' : ''} in this file.
+                    {' '}Current profile has {Object.keys(db).length} skill{Object.keys(db).length !== 1 ? 's' : ''}.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button className="w-full rounded"
+                      style={{ padding: '10px', fontSize: 'var(--fs-xs)', textAlign: 'left', background: 'var(--color-accent-bg)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+                      onClick={handleJSONAppend}>
+                      Append to current profile
+                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--color-text-dim)', marginTop: '2px' }}>Adds imported skills alongside existing ones</span>
+                    </button>
+                    <button className="w-full rounded"
+                      style={{ padding: '10px', fontSize: 'var(--fs-xs)', textAlign: 'left', background: 'var(--color-blue-bg)', border: '1px solid var(--color-blue)', color: 'var(--color-blue)' }}
+                      onClick={() => setJsonImportMode('newprofile')}>
+                      Create new profile from this file
+                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--color-text-dim)', marginTop: '2px' }}>Creates a new user profile with this data</span>
+                    </button>
+                    <button className="rounded"
+                      style={{ padding: '8px 14px', fontSize: 'var(--fs-xs)', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)' }}
+                      onClick={closeImportModal}>
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 500 }}>New profile name</p>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-text-muted)' }}>
+                    A new user profile will be created and you will be switched to it.
+                  </p>
+                  <input type="text" className="w-full rounded"
+                    style={{ padding: '8px 12px', fontSize: 'var(--fs-sm)' }}
+                    placeholder="username..."
+                    value={jsonNewProfileName}
+                    onChange={e => { setJsonNewProfileName(e.target.value); setJsonImportError('') }}
+                    onKeyDown={e => { if (e.key === 'Enter') handleJSONCreateProfile() }}
+                    autoFocus
+                  />
+                  {jsonImportError && (
+                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-accent)' }}>{jsonImportError}</p>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="flex-1 rounded"
+                      style={{ padding: '8px', fontSize: 'var(--fs-xs)', background: 'var(--color-blue-bg)', border: '1px solid var(--color-blue)', color: 'var(--color-blue)', opacity: !jsonNewProfileName.trim() ? 0.4 : 1 }}
+                      onClick={handleJSONCreateProfile} disabled={!jsonNewProfileName.trim()}>
+                      Create profile
+                    </button>
+                    <button className="rounded"
+                      style={{ padding: '8px 14px', fontSize: 'var(--fs-xs)', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)' }}
+                      onClick={() => setJsonImportMode('choice')}>
+                      ← back
+                    </button>
+                  </div>
+                </>
+              )
+            ) : (
+              // CSV / Markdown import
+              <>
+                <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 500 }}>Import CSV, Markdown, or JSON</p>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', border: '1px dashed var(--color-border-mid)', borderRadius: '3px', cursor: 'pointer' }}>
+                  <input type="file" accept=".csv,.md,.txt,.json" className="hidden" onChange={handleImportFile} />
+                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-text-muted)' }}>
+                    {importPreview ? 'file loaded' : 'click to browse'}
+                  </span>
+                </label>
+                {importPreview && (
+                  <pre style={{ fontSize: '10px', padding: '10px', borderRadius: '3px', background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', maxHeight: '120px', overflowY: 'auto' }}>
+                    {importPreview}
+                  </pre>
+                )}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {pendingImport && (
+                    <button className="flex-1 rounded"
+                      style={{ padding: '8px', fontSize: 'var(--fs-xs)', background: 'var(--color-accent-bg)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+                      onClick={handleConfirmImport}>
+                      Import {pendingImport.length} cards
+                    </button>
+                  )}
+                  <button className="rounded"
+                    style={{ padding: '8px 14px', fontSize: 'var(--fs-xs)', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)' }}
+                    onClick={closeImportModal}>
+                    cancel
+                  </button>
+                </div>
+              </>
             )}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {pendingImport && (
-                <button className="flex-1 rounded"
-                  style={{ padding: '8px', fontSize: 'var(--fs-xs)', background: 'var(--color-accent-bg)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
-                  onClick={handleConfirmImport}>
-                  Import {pendingImport.length} cards
-                </button>
-              )}
-              <button className="rounded"
-                style={{ padding: '8px 14px', fontSize: 'var(--fs-xs)', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)' }}
-                onClick={() => { setShowImport(false); setImportPreview(null); setPendingImport(null) }}>
-                cancel
-              </button>
-            </div>
           </div>
         </div>
       )}

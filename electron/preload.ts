@@ -15,6 +15,13 @@ contextBridge.exposeInMainWorld('api', {
     save: (data: unknown) => ipcRenderer.invoke('skills:save', data),
     getPath: () => ipcRenderer.invoke('skills:getPath'),
   },
+  user: {
+    list: () => ipcRenderer.invoke('user:list'),
+    getActive: () => ipcRenderer.invoke('user:getActive'),
+    setActive: (username: string) => ipcRenderer.invoke('user:setActive', username),
+    create: (username: string, apiKey: string) => ipcRenderer.invoke('user:create', username, apiKey),
+    delete: (username: string) => ipcRenderer.invoke('user:delete', username),
+  },
   claude: {
     testKey: (key: string) => ipcRenderer.invoke('claude:testKey', key),
     generateSkill: (payload: unknown) => ipcRenderer.invoke('claude:generateSkill', payload),

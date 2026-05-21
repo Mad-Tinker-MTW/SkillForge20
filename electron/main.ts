@@ -1,10 +1,9 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, renameSync } from 'fs'
 import Store from 'electron-store'
 import Anthropic from '@anthropic-ai/sdk'
 
-// Fix DPI scaling on Windows high-dpi displays before app ready
 app.commandLine.appendSwitch('high-dpi-support', '1')
 app.commandLine.appendSwitch('force-device-scale-factor', '1')
 
@@ -16,8 +15,41 @@ const isDev = process.env.NODE_ENV === 'development'
 
 let mainWindow: BrowserWindow | null = null
 
+interface UserRecord {
+  apiKey: string
+  onboarded: boolean
+}
+
+// ── Migration: single-user → multi-user ──────────────────────────────────────
+
+function migrateToUsers() {
+  if (store.has('users')) return
+
+  const oldKey = store.get('anthropicApiKey', '') as string
+  const oldOnboarded = store.get('onboarded', false) as boolean
+  const users: Record<string, UserRecord> = {}
+
+  if (oldKey) {
+    users['default'] = { apiKey: oldKey, onboarded: oldOnboarded }
+    store.set('activeUser', 'default')
+
+    const oldPath = join(app.getPath('userData'), 'skills.json')
+    const newPath = join(app.getPath('userData'), 'skills-default.json')
+    if (existsSync(oldPath) && !existsSync(newPath)) {
+      renameSync(oldPath, newPath)
+    }
+  } else {
+    store.set('activeUser', '')
+  }
+
+  store.set('users', users)
+  store.delete('anthropicApiKey')
+  store.delete('onboarded')
+}
+
+// ── Window ───────────────────────────────────────────────────────────────────
+
 function createWindow() {
-  // Restore last window size or use defaults
   const winWidth = (store.get('windowWidth', 1280)) as number
   const winHeight = (store.get('windowHeight', 800)) as number
 
@@ -42,19 +74,16 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
-    // mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
-    // Send display info to renderer so it can calculate zoom
     const bounds = mainWindow?.getBounds()
     mainWindow?.webContents.send('window-bounds', bounds)
   })
 
-  // Save window size on resize
   mainWindow.on('resize', () => {
     if (!mainWindow) return
     const [w, h] = mainWindow.getSize()
@@ -66,6 +95,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  migrateToUsers()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -76,29 +106,78 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// ── Settings / API key ──────────────────────────────────────────────────────
+// ── User management ──────────────────────────────────────────────────────────
+
+function getUsers(): Record<string, UserRecord> {
+  return store.get('users', {}) as Record<string, UserRecord>
+}
+
+function getActiveUser(): string {
+  return store.get('activeUser', '') as string
+}
+
+ipcMain.handle('user:list', () => Object.keys(getUsers()))
+
+ipcMain.handle('user:getActive', () => getActiveUser())
+
+ipcMain.handle('user:setActive', (_event, username: string) => {
+  const users = getUsers()
+  if (!users[username]) return false
+  store.set('activeUser', username)
+  return true
+})
+
+ipcMain.handle('user:create', (_event, username: string, apiKey: string) => {
+  const users = getUsers()
+  if (users[username]) return false
+  store.set('users', { ...users, [username]: { apiKey: apiKey.trim(), onboarded: false } })
+  store.set('activeUser', username)
+  return true
+})
+
+ipcMain.handle('user:delete', (_event, username: string) => {
+  const users = getUsers()
+  const { [username]: _removed, ...rest } = users
+  store.set('users', rest)
+  if (getActiveUser() === username) {
+    store.set('activeUser', Object.keys(rest)[0] || '')
+  }
+  return true
+})
+
+// ── Settings — per-user ───────────────────────────────────────────────────────
 
 ipcMain.handle('settings:getApiKey', () => {
-  return store.get('anthropicApiKey', '') as string
+  const users = getUsers()
+  return users[getActiveUser()]?.apiKey || ''
 })
 
 ipcMain.handle('settings:setApiKey', (_event, key: string) => {
-  store.set('anthropicApiKey', key.trim())
+  const username = getActiveUser()
+  if (!username) return false
+  const users = getUsers()
+  store.set('users', { ...users, [username]: { ...users[username], apiKey: key.trim() } })
   return true
 })
 
 ipcMain.handle('settings:isOnboarded', () => {
-  return store.get('onboarded', false) as boolean
+  const users = getUsers()
+  return users[getActiveUser()]?.onboarded || false
 })
 
 ipcMain.handle('settings:setOnboarded', () => {
-  store.set('onboarded', true)
+  const username = getActiveUser()
+  if (!username) return false
+  const users = getUsers()
+  store.set('users', { ...users, [username]: { ...users[username], onboarded: true } })
   return true
 })
 
 ipcMain.handle('settings:clearApiKey', () => {
-  store.delete('anthropicApiKey')
-  store.delete('onboarded')
+  const username = getActiveUser()
+  if (!username) return false
+  const users = getUsers()
+  store.set('users', { ...users, [username]: { apiKey: '', onboarded: false } })
   return true
 })
 
@@ -112,10 +191,12 @@ ipcMain.handle('settings:setZoom', (_event, zoom: number) => {
   return true
 })
 
-// ── File persistence ─────────────────────────────────────────────────────────
+// ── File persistence — per-user ──────────────────────────────────────────────
 
 function getSkillsPath() {
-  return join(app.getPath('userData'), 'skills.json')
+  const username = getActiveUser()
+  const filename = username ? `skills-${username}.json` : 'skills.json'
+  return join(app.getPath('userData'), filename)
 }
 
 ipcMain.handle('skills:load', () => {
@@ -138,9 +219,7 @@ ipcMain.handle('skills:save', (_event, data: unknown) => {
   }
 })
 
-ipcMain.handle('skills:getPath', () => {
-  return getSkillsPath()
-})
+ipcMain.handle('skills:getPath', () => getSkillsPath())
 
 // ── Claude API — test connection ─────────────────────────────────────────────
 
@@ -175,7 +254,7 @@ ipcMain.handle('claude:generateSkill', async (_event, payload: {
     definitionOfDone: string
   }
 }) => {
-  const key = store.get('anthropicApiKey', '') as string
+  const key = getUsers()[getActiveUser()]?.apiKey || ''
   if (!key) return { ok: false, message: 'No API key configured.' }
 
   const { skillName, constraints } = payload
@@ -190,6 +269,8 @@ Their constraints:
 - Available tools/resources: ${constraints.availableTools || 'not specified'}
 - End goal: ${constraints.endGoal || 'reach functional competence'}
 - Definition of done: ${constraints.definitionOfDone || 'not specified'}
+
+IMPORTANT: Generate a plan that fits inside 20 focused hours for a normal beginner. Move anything requiring advanced polish to Future Upgrades if needed.
 
 Generate a complete First 20 Hours learning plan. Return ONLY valid JSON, no explanation, no markdown fences.
 
@@ -279,7 +360,7 @@ ipcMain.handle('claude:generateTest', async (_event, payload: {
   subSkills: string[]
   passThreshold: number
 }) => {
-  const key = store.get('anthropicApiKey', '') as string
+  const key = getUsers()[getActiveUser()]?.apiKey || ''
   if (!key) return { ok: false, message: 'No API key configured.' }
 
   const { skillName, definitionOfDone, subSkills, passThreshold } = payload
@@ -342,7 +423,7 @@ Rules:
   }
 })
 
-// ── Claude API — generate performance rubric (non-knowledge skills) ──────────
+// ── Claude API — generate performance rubric ─────────────────────────────────
 
 ipcMain.handle('claude:generateRubric', async (_event, payload: {
   skillName: string
@@ -351,7 +432,7 @@ ipcMain.handle('claude:generateRubric', async (_event, payload: {
   passThreshold: number
   assessmentType: string
 }) => {
-  const key = store.get('anthropicApiKey', '') as string
+  const key = getUsers()[getActiveUser()]?.apiKey || ''
   if (!key) return { ok: false, message: 'No API key configured.' }
 
   const { skillName, definitionOfDone, subSkills, passThreshold, assessmentType } = payload
@@ -381,9 +462,9 @@ The rubric must reflect what a person can DO, BUILD, or PROVE, not just what the
 Rules:
 - Total points must equal exactly 100.
 - 6-10 rubric items maximum. Each item must be specific and testable.
-- Weights should reflect the definition of done. If DOD says "compare recordings", that criterion gets significant weight.
+- Weights should reflect the definition of done.
 - Do NOT include items the student cannot realistically achieve inside 20 focused hours.
-- If the DOD requires a measurement tool (compare files, measure speed, count accuracy), include a measurement tool suggestion.
+- If the DOD requires a measurement tool, include a measurement tool suggestion.
 - Items must be ordered from foundational to advanced.
 
 Return ONLY valid JSON, no explanation, no markdown fences.
@@ -394,7 +475,7 @@ Schema:
   "instructions": "string — 2-3 sentences explaining how to use this rubric",
   "passThreshold": ${passThreshold},
   "assessmentType": "${assessmentType}",
-  "measurementToolSuggestion": "string | null — if DOD requires a measurement, suggest a specific tool or method",
+  "measurementToolSuggestion": "string | null",
   "items": [
     {
       "id": "string — short_snake_case",
@@ -425,13 +506,13 @@ Schema:
   }
 })
 
-// ── Claude API — detect assessment type from DOD ──────────────────────────────
+// ── Claude API — detect assessment type ──────────────────────────────────────
 
 ipcMain.handle('claude:detectAssessmentType', async (_event, payload: {
   skillName: string
   definitionOfDone: string
 }) => {
-  const key = store.get('anthropicApiKey', '') as string
+  const key = getUsers()[getActiveUser()]?.apiKey || ''
   if (!key) return { ok: false, message: 'No API key configured.' }
 
   const { skillName, definitionOfDone } = payload
@@ -446,7 +527,7 @@ Assessment types:
 - performance_skill: physically perform (play instrument, speak language, type, draw, exercise)
 - build_project: build, make, create, prototype, deploy, wire, solder, code, demo a device or app
 - concept_understanding: explain, understand, describe how something works
-- measurable_output: compare to a benchmark, measure accuracy, score against a reference (waveform, WPM, packet rate)
+- measurable_output: compare to a benchmark, measure accuracy, score against a reference
 - hybrid: requires two or more of the above
 
 Respond with ONLY a JSON object, no explanation:
@@ -463,7 +544,7 @@ Respond with ONLY a JSON object, no explanation:
     const cleaned = text.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(cleaned)
     return { ok: true, assessmentType: parsed.assessmentType, reasoning: parsed.reasoning }
-  } catch (err: unknown) {
+  } catch {
     return { ok: false, assessmentType: 'knowledge_test', message: 'Detection failed, defaulting to knowledge test.' }
   }
 })
@@ -475,7 +556,7 @@ ipcMain.handle('claude:analyzeProgress', async (_event, payload: {
   sessionLogs: Array<{ date: string; hours: number; note: string }>
   totalHours: number
 }) => {
-  const key = store.get('anthropicApiKey', '') as string
+  const key = getUsers()[getActiveUser()]?.apiKey || ''
   if (!key) return { ok: false, message: 'No API key configured.' }
 
   const { skillName, sessionLogs, totalHours } = payload

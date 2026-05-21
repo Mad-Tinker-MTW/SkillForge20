@@ -201,6 +201,13 @@ export interface WindowAPI {
     save: (data: SkillDB) => Promise<boolean>
     getPath: () => Promise<string>
   }
+  user: {
+    list: () => Promise<string[]>
+    getActive: () => Promise<string>
+    setActive: (username: string) => Promise<boolean>
+    create: (username: string, apiKey: string) => Promise<boolean>
+    delete: (username: string) => Promise<boolean>
+  }
   claude: {
     testKey: (key: string) => Promise<{ ok: boolean; message: string }>
     generateSkill: (payload: GeneratePayload) => Promise<{ ok: boolean; data?: GeneratedSkillData; message?: string }>

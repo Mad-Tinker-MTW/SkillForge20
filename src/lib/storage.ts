@@ -12,7 +12,7 @@ export function emptySkill(name: string): Skill {
     id: uid(),
     name,
     created: new Date().toISOString(),
-    commit: { goal: '', endDate: '', definition: '', statement: '' },
+    commit: { goal: name, endDate: '', definition: '', statement: '' },
     weekTasks: {},
     deconstruct: [],
     selfcorrect: [],

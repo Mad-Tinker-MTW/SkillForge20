@@ -1,14 +1,18 @@
 # STATUS — SkillForge20
 
 ## Current State
-Working. `npm run start` launches without error. AI plan generation was hitting a JSON parse error due to truncated Claude responses (max_tokens too low).
+Production build complete. `release/SkillForge20-Setup-1.3.0.exe` built and ready. All pre-build fixes applied.
 
-## Last Session Fix
-- `SessionLogPanel.tsx`: added focus, errors, fixes, evidence, nextStep form fields and entry display
-- `web/index.html`: replaced all three `prompt()` calls with styled Promise-based modal, added api key button to sidebar, fixed URL editing on selfcorrect cards, bumped callClaude default max_tokens to 8000
+## Last Session Fixes
+- Skill name now pre-populates pre-commit goal and AI generator field on creation (both platforms)
+- Web onboarding wizard restored: welcome, API key with live test, first skill name
+- Multi-user support added to Electron: per-user API key and skills file, user selector on startup, migration from single-user, switch user in sidebar
+- JSON import user handling: Electron 3-way choice (append/new profile/cancel), web replace/merge/cancel
+- Test data cleared: skills.json set to `{}`, devReset() added to web version
 
 ## Next Action
-Test plan generation and session log in the running Electron app. Remaining web gaps: knowledge test modes (flashcard/quiz/full test), AI constraints panel, plan preview before apply, CSV/MD import.
+Run installed app on clean machine to confirm migration and empty-start behavior. Remaining web gaps: knowledge test modes (flashcard/quiz/full test), AI constraints panel, plan preview before apply.
 
 ## Known Issues
-None blocking. The `as any` casts are cleaned up. Type coverage is complete across the IPC bridge.
+- Default Electron icon used in build (resources/icon.ico missing, icon.png exists). Cosmetic only.
+- Web wizard `firstskill` button text update uses inline `oninput` handler — works but fragile. Can refactor if it breaks.

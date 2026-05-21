@@ -45,6 +45,35 @@
 
 ---
 
+## 2026-05-20 (session 4)
+
+**Problem:** Skill name was entered three times: wizard, pre-commit goal, and AI generator skill input. Wizard value was not carried forward to the other two fields.
+**Fix:** `emptySkill()` in `storage.ts` now sets `commit.goal = name`. Web `modalCreateSkill()` also sets `commit.goal = name`. Both platforms: one entry, pre-populated everywhere.
+**Reason:** Pre-commit goal and AI generator seed the Claude prompt. Users were re-typing the same string three times with no added value.
+**Result:** Skill name typed once. Pre-commit goal and AI generator field auto-populate on skill creation.
+
+**Problem:** Web version lacked an onboarding wizard. First-time users saw a bare API key modal with no context, explanation, or skill setup flow.
+**Fix:** Full multi-step wizard added to `Web/index.html`: welcome screen, API key instructions with console link, key entry with live connection test, first skill name input. Uses existing dark theme CSS variables throughout. Wizard shows on `!apiKey`, hides after completion. Old `showApiKeyModal(true)` init replaced.
+**Reason:** Matches the Electron onboarding flow. New users need context about what the app does and what credentials are required.
+**Result:** Consistent first-run experience across both platforms.
+
+**Problem:** No per-user isolation. All users on the same machine shared one API key and one skills file.
+**Fix:** Multi-user support added to Electron. Each user gets `skills-{username}.json` and a separate API key entry in the encrypted store. Migration runs on first launch: single-user data moves to user `default`. Startup shows user selector when multiple users exist, new user flow when zero users exist. User display and switch button added to sidebar.
+**Reason:** Required for shared-machine use cases and family/class deployments.
+**Result:** Full user isolation. Existing data migrates automatically to `default` profile.
+
+**Problem:** JSON import had no user handling. Importing a backup silently merged data with no choice about where it went.
+**Fix:** Electron JSON import now shows a 3-way choice: append to current profile, create new profile from this file (with username prompt), or cancel. Web JSON import shows replace all, merge, or cancel when current session has data.
+**Reason:** Destructive imports without confirmation are a data loss risk.
+**Result:** Import is always a deliberate action with explicit choice.
+
+**Problem:** Test skills from development (`Learn 100 phrases in conversation Russian`) were present in `skills.json`.
+**Fix:** `skills.json` cleared to `{}`. No hardcoded test skills found in source (only placeholder text in input fields). `devReset()` added to web version for console-level data wipe.
+**Reason:** App must ship with no pre-existing data.
+**Result:** App starts completely empty on next launch. Web version provides `devReset()` for local testing cleanup.
+
+---
+
 ## 2026-05-20 (session 3)
 
 **Problem:** `SessionLogPanel.tsx` only captured date, hours, and note. The `SessionEntry` type has had `focus`, `errors`, `fixes`, `evidence`, and `nextStep` since v1.3. The form was a regression — the type existed, the web version had the fields, the Electron form did not.
