@@ -1,0 +1,109 @@
+# SkillForge20 Changelog
+
+---
+
+## 2026-05-28 — Session: Phase 1-5 initial build
+
+Problem: Project did not exist.
+Fix: Built Phase 1 through Phase 5 per CLAUDE.md build order.
+Reason: New project bootstrap.
+Result: DB schema, server, intake wizard, Today tab with 4-card layout, practice generation, self-correct generation, audio (TTS + speech recognition) all passing acceptance criteria.
+
+---
+
+## 2026-05-28 — Session: Phase 6 — Plan and Log Tabs
+
+Problem: Plan and Log tabs showed placeholders; no export/import capability.
+Fix:
+  - Added GET /api/skills/:id/plan endpoint returning PlanSessionDetail[] (sessions joined with subskill names)
+  - Added POST /api/sessions/skill/:skillId/advance for plan advancement check and execution
+  - Created server/routes/export.ts with GET /:skillId (JSON download) and POST /import
+  - Created PlanTab.tsx, WeekGrid.tsx, SessionSlot.tsx for 7-week grid with advancement panel
+  - Created LogTab.tsx, SessionHistory.tsx, HoursProgress.tsx for full session history and export
+  - Updated App.tsx to wire Plan and Log tabs, added Import Skill button to left rail
+  - Added PlanSessionDetail type to src/types/index.ts
+  - Added plan, export API methods to src/lib/api.ts
+Reason: Phase 6 acceptance criteria require functional plan grid, advancement logic, log history, and export/import.
+Result: Plan tab shows 7-week grid with current week highlighted, session status (complete/active/planned/skipped), Check Advance button with backend recommendation. Log tab shows hours progress bar, session history with whatDidntWork and self-correct excerpts, Export JSON download, Import JSON upload. TypeScript clean. All endpoints verified.
+
+---
+
+## 2026-05-28 — Session: Phase 7 — Assessment
+
+Problem: Assess tab showed a placeholder; no assessment capability existed.
+Fix:
+  - Added runAssessmentGeneration() to server/lib/prompts.ts; ASSESSMENT_SYSTEM prompt derives threshold from done criteria text
+  - Created server/routes/assessments.ts: POST /generate (AI call), POST /:skillId (save result + update floor/ceiling), GET /:skillId (list history)
+  - Mounted /api/assessments in server/index.ts
+  - Added AssessmentContent, AssessmentItem, AssessmentRow types to src/types/index.ts
+  - Built AssessTab.tsx (intro/generating/running/saving/done phases), AssessmentRunner.tsx (item-by-item reveal+score flow), ResultCard.tsx (score breakdown)
+  - Wired AssessTab into App.tsx with onAssessmentSaved calling refreshToken() to update TopBar immediately
+Reason: Phase 7 acceptance criteria require assessment derived from done criteria, floor/ceiling cleared states persisted and reflected in TopBar.
+Result: AI extracts threshold from floor/ceiling text (e.g. "70%" → floorThreshold:70), generates 4-12 items testing only practiced subskills, tooEarlyWarning when < 10h logged. Submission updates floor_cleared/ceiling_cleared in DB. TopBar shows ✓ Floor / ✓ Ceiling immediately. TypeScript clean.
+
+---
+
+## 2026-05-28 — Session: Phase 8 — Polish
+
+Problem: App had rough edges: no settings, no skill-type color differentiation in left rail, layout could shift on token load, no retry on TodayTab error, wizard deconstruction showed only a blank spinner.
+Fix:
+  - Added GET /api/settings endpoint returning apiKeyConfigured boolean
+  - Added Settings toggle in left rail with inline panel (API key status, version, DB type)
+  - Added skill-type colored dot to each skill button in left rail (language=blue, instrument=amber, concept=violet, create=green, fix=orange, do=red)
+  - TopBar skeleton renders immediately while token loads (prevents layout shift)
+  - TodayTab error state now has Retry button
+  - Wizard deconstructing step shows animated 6-step progress bar cycling through "Analyzing skill type..." → "Finalizing sessions..."
+  - TodayTab grid changed to grid-cols-1 sm:grid-cols-2 for responsive stacking
+Reason: Phase 8 acceptance criteria — loading context, error recovery, always-visible top bar, settings, skill type colors, responsive layout.
+Result: All 8 phases complete. TypeScript clean. Full end-to-end flow working: intake → deconstruction → practice → self-correct → plan → log → export/import → assessment → cleared states.
+
+---
+
+## 2026-05-28 — Session: v2.0 — FIX 1-8
+
+Problem: Six confirmed bugs from v1.0 usage: practice content regenerated on tab switch, weekly plan had duplicate subskills across week pairs, session state lived only in React local state (reset on tab switch), session log entries were not expandable/editable/deletable, hours_logged never updated, and practice card had an internal scrollbar.
+Fix:
+  FIX 1 — Schema migration: ALTER TABLE session_logs added practice_content TEXT and session_state TEXT DEFAULT 'idle'.
+  FIX 2 (BUG-01) — Moved practice AI generation from useEffect into startSession() handler. On mount, PracticeCard checks DB for existing practice_content via GET /api/sessions/active; if present, renders from DB with no AI call. POST /sessions/start now accepts and stores practiceContent JSON.
+  FIX 3 (BUG-03) — Added session_state column with explicit state machine (idle/active/logging/self_correct/complete). TodayTab fetches sessionLogId, sessionState, practiceContent, startedAt from DB on every render and passes as props; children call onStateChange() to trigger reload. SelfCorrectCard unlocks on sessionState === "self_correct" instead of local flag.
+  FIX 4 (BUG-05) — Replaced all hours_logged increments with idempotent SUM subquery: UPDATE skills SET hours_logged = (SELECT COALESCE(SUM(minutes_logged),0)/60.0 FROM session_logs WHERE skill_id=?) at PATCH /:id/practice, PATCH /:id/self-correct, PATCH /:id/edit, and DELETE /:id.
+  FIX 5 — New PracticeOutputForm with per-task rows (PracticeTaskRow), extra step rows (ExtraStepRow), and auto-calculated time summary (TimeSummaryTable). Task list pre-populated from frozen practice_content.tasks. Save blocked if whatDidntWork is empty.
+  FIX 6 (BUG-04) — SessionLogEntry rewrote as expandable card: collapsed shows S[N]/subskill/rating/date/time; expanded shows practice content, v2.0 task table (with fallback to v1.0 flat text), self-correct output, Edit/Delete buttons. Edit pre-fills PracticeOutputForm. Delete has confirm dialog and calls DELETE /:id.
+  FIX 7 (BUG-06) — PracticeCard now has two views toggled by showFull state: summary (task chips only, no scroll) and full (fullInstructions in overflow-y-auto max-h-56 block). CardBody has no max-h constraint.
+  FIX 8 (BUG-02) — Updated DECONSTRUCT_SYSTEM and deconstructTool schema to output phase-bucketed arrays (foundation/depth/stress), each 4-8 distinct subskills. runDeconstruction() flattens buckets back to SubskillDraft[] for confirm-plan. Fixed distributeSessions() to assign each subskill once before overflow; overflow uses priority-1 pool only instead of cycling entire pool. Added POST /api/skills/:id/regenerate-plan endpoint. Added Regenerate Plan button with confirmation dialog to PlanTab.
+Reason: All 6 bugs confirmed in v1.0 real usage per CLAUDE.md bug registry. v2.0 build contract specified exact fix approach for each.
+Result: Full session flow works from Start Session through self-correct and hours update without any AI call on tab return. Log entries expandable, editable, deletable with hours recalculation. Practice card fits in 2x2 grid without scrollbar. New skills get distinct phase subskills; existing skill can regenerate plan via UI button. TypeScript clean. Server healthy.
+
+---
+
+## 2026-05-30 — Session: v2.2 — BUG-11, BUG-12, BUG-13, Features, /start fix
+
+Problem: Week 7 showed foundation subskills instead of assessment sessions (BUG-11). Left rail skill name truncated and Definition of Done was not visible (BUG-12). Session logs written with week_number = 0 (BUG-13). No initial report prompt after plan generation. No barrier management during active skill. POST /start returned HTML 500 on any SQLite error.
+Fix:
+  BUG-11 — Added insertAssessSubskills() helper in skills.ts. Creates 4 DB-backed subskill rows (week_phase=assess) inside the plan generation transaction. Both confirm-plan and regenerate-plan call it and pass assess refs to distributeSessions(). Removed the broken if(phase==="assess") override that fell back to priority-1 foundation subskills.
+  BUG-12 — App.tsx: skill name button changed to items-start, span changed from truncate to break-words. Left rail aside width converted from w-52 to dynamic state with drag handle (position:absolute, right edge, cursor-col-resize), clamped 200-400px, persisted in localStorage key sf20-rail-width. SessionMetaPanel.tsx: Definition of Done section added below last-session line, reads skill.done_floor and skill.done_ceiling from SkillContext, text-xs, break-words, no truncation.
+  BUG-13 — sessions.ts /start route: added week_number to session_logs INSERT, reads plan.week_number ?? 1 from already-fetched PlanSessionRow. DB migration: ALTER TABLE session_logs ADD COLUMN week_number INTEGER DEFAULT 1 run directly against skillforge.db via bun:sqlite.
+  FEATURE InitialReportModal — New src/components/shared/InitialReportModal.tsx. TodayTab checks localStorage flag sf20-initial-saved-[skillId] and token.hoursLogged===0 after data loads; shows modal if not flagged. Save button fetches /api/export/[skillId] as blob, downloads as SF20-initial.json. Skip or Save both set the localStorage flag. Shows once per skill ID.
+  FEATURE BarriersPanel — New server/routes/barriers.ts (GET/PATCH/POST). Registered in server/index.ts at /api/barriers. New src/components/log/BarriersPanel.tsx: resolved checkbox (optimistic update with rollback), inline mitigation text input (saves on blur or Enter), + Add Barrier inline form (type select + text). LogTab.tsx imports and renders BarriersPanel below session history.
+  /start fix — Entire /start handler wrapped in try/catch returning res.status(500).json({error:message}). plan_sessions SELECT changed from SELECT * to explicit column list. weekNumber extracted to const before transaction.
+Reason: All items confirmed broken in v2.1 real usage. Fixes follow exact scope and approach from CLAUDE.md BUG registry and feature specs.
+Result: Week 7 shows correct assessment sessions on new skill and Regenerate Plan. Left rail wraps text, shows DoD, resize persists. Start Session works, week_number writes correctly. New skill shows initial report prompt once. Log tab has full barrier CRUD. /start returns JSON errors instead of HTML. Build clean. DB migrated.
+
+---
+
+## 2026-05-29 — Session: v2.1 — FIX 1-8
+
+Problem: Four confirmed bugs from v2.0 usage: hours display out of sync across TopBar/LogTab/AssessTab (BUG-07), running timer stops on tab switch and seeds from zero on return (BUG-08), 2x2 grid cramps the practice area and duplicates the Log tab (BUG-09), Assess tab warning fires against stale 0.0h and hard-blocked the Generate Assessment button (BUG-10).
+Fix:
+  FIX 1 — SkillContext: Created src/context/SkillContext.tsx with SkillProvider, SkillContext, and useSkill() hook. GET /api/skills/:id returns {skill,...} so refreshSkill() extracts data.skill. Provider wraps all of MainApp in App.tsx. Null guard skips fetch when skillId is null. Clears stale data on skill switch.
+  FIX 2 (BUG-07) — TopBar: Imports useSkill(), reads skill?.hours_logged from context. Falls back to token.hoursLogged until context resolves.
+  FIX 3 (BUG-07) — LogTab: Removed independent fetch(/api/skills/:id) and local hoursLogged state. handleChanged() calls await refreshSkill() then refreshLogs() — delete and edit save now update all displays simultaneously.
+  FIX 4 (BUG-07/10) — AssessTab: Reads skill from useSkill(). Single showDualWarning replaces tooEarly/softWarning. Warning text updated to dual 20h + 7-week requirement. Each condition goes green when met. Generate Assessment button never disabled. Week number derived from skill.created_at.
+  FIX 5 (BUG-07) — SelfCorrectCard: Calls await refreshSkill() after PATCH succeeds and before onSelfCorrectSaved(). Completing a session updates TopBar, LogTab, and AssessTab hours simultaneously.
+  FIX 6 (BUG-08) — Timer removal: Removed elapsed state, timerRef, timer useEffect, fmt() helper, clock display from PracticeCard. Removed startedAt prop thread. Removed elapsed prop from PracticeOutputForm, TimeSummaryTable, SessionLogEntry edit call. PracticeTaskRow: "Xm planned" renamed to "Goal: Xm". TimeSummaryTable: Wall clock row removed. minutesLogged = timeSummary.totalActual. No setInterval anywhere in the app.
+  FIX 7 (BUG-09) — Layout restructure: TodayTab rewritten as 2-column resizable layout with useCallback drag handle (min 200px, max 45% viewport). Left: hint / SelfCorrectCard / complete summary. Right: PracticeCard full height — flex flex-col h-full, header shrink-0, body flex-1 overflow-y-auto, footer shrink-0 sticky Done button. SessionCard and SessionLogCard removed from TodayTab. SessionMetaPanel added to App.tsx aside.
+  FIX 8 (BUG-09) — Pace indicator in SessionMetaPanel: weeks_elapsed = max(1, ceil), expected = weeks*(20/7), delta = hours-expected. On pace (grey ±0.5h), Ahead (amber), Behind (blue) with add Xm/session subtitle. New skill at 0h shows Behind. Display-only.
+Reason: BUG-07 through BUG-10 confirmed in v2.0 real usage. Fix order followed exactly per CLAUDE.md v2.1 Section 9.
+Result: Hours synchronized across TopBar/LogTab/AssessTab via SkillContext. No automatic timer. Two-column resizable Today tab with sticky Done button and no practice column scrollbar in summary view. Session meta and pace indicator in left rail. Generate Assessment always clickable. TypeScript clean. Build passes.
+
+---

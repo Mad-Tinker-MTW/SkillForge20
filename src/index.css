@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-skill-language: #3b82f6;
+  --color-skill-instrument: #f59e0b;
+  --color-skill-concept: #8b5cf6;
+  --color-skill-create: #22c55e;
+  --color-skill-fix: #f97316;
+  --color-skill-do: #ef4444;
+}
