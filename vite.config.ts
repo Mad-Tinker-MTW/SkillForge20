@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [tailwindcss(), react()],
   server: {
     port: 3000,
+    allowedHosts: ["skillforge20.madtinkersworkshop.com"],
     proxy: {
       "/api": "http://localhost:3001",
     },
